@@ -6,6 +6,7 @@ import cv2
 from skimage.feature import hog
 from img_processing import convert_color
 from features import bin_spatial, color_hist
+from sklearn.preprocessing import StandardScaler
 
 # dist_pickle = pickle.load(open("svc_pickle.p", "rb"))
 # svc = dist_pickle["svc"]
@@ -193,7 +194,99 @@ def get_features_all_datasets():
     return cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat, noncars_test_feat, noncars_valid_feat
 
 
-get_features_all_datasets()
+def scale_features(cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat,
+                   noncars_test_feat, noncars_valid_feat):
+    """
+    Standardizes features using sklearn's StandardScaler
+
+    :param cars_train_feat:
+    :param cars_test_feat:
+    :param cars_valid_feat:
+    :param noncars_train_feat:
+    :param noncars_test_feat:
+    :param noncars_valid_feat:
+    :return: The scaled feature stack
+    """
+    # Stack the features into a matrix
+    stack = np.vstack((cars_train_feat, cars_valid_feat, cars_test_feat, noncars_train_feat,
+                       noncars_valid_feat, noncars_test_feat))
+
+    # Fit a StandardScaler based on the shape of the stack
+    scaler = StandardScaler().fit(stack)
+
+    # Apply the scaler to the stack and return
+    return scaler.transform(stack)
+
+
+def generate_train_valid_test(cars_train_feat, cars_test_feat, cars_valid_feat,
+                              noncars_train_feat, noncars_test_feat, noncars_valid_feat,
+                              random_state=42):
+    """
+    Generates X and y datasets for training, validation, and testing
+
+    :param stack:
+    :param cars_train_feat:
+    :param cars_test_feat:
+    :param cars_valid_feat:
+    :param noncars_train_feat:
+    :param noncars_test_feat:
+    :param noncars_valid_feat:
+    :param random_state:
+    :return:
+    """
+    # Get the length of each dataset
+    c_train_len = len(cars_train_feat)
+    c_valid_len = len(cars_valid_feat)
+    c_test_len = len(cars_test_feat)
+    n_train_len = len(noncars_train_feat)
+    n_valid_len = len(noncars_valid_feat)
+    n_test_len = len(noncars_test_feat)
+
+    # Set array index points
+    br1 = c_train_len
+    br2 = br1 + c_valid_len
+    br3 = br2 + c_test_len
+    br4 = br3 + n_train_len
+    br5 = br4 + n_valid_len
+
+    # Get the scaled feature stack
+    stack = scale_features(cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat,
+                           noncars_test_feat, noncars_valid_feat)
+
+    # Reindex features from the scaled stack
+    cars_train_feat = stack[:br1]
+    cars_valid_feat = stack[br1:br2]
+    cars_test_feat = stack[br2:br3]
+    noncars_train_feat = stack[br3:br4]
+    noncars_valid_feat = stack[br4:br5]
+    noncars_test_feat = stack[br5:]
+
+    # Get X_ and y_ values for training, validation, and testing
+    X_train = np.vstack((cars_train_feat, noncars_train_feat))
+    X_valid = np.vstack((cars_valid_feat, noncars_valid_feat))
+    X_test = np.vstack((cars_test_feat, noncars_test_feat))
+    y_train = np.hstack((np.ones(c_train_len), np.zeros(n_train_len)))
+    y_valid = np.hstack((np.ones(c_valid_len), np.zeros(n_valid_len)))
+    y_test = np.hstack((np.ones(c_test_len), np.zeros(n_test_len)))
+
+    # Shuffle the values
+    X_train, y_train = shuffle(X_train, y_train, random_state)
+    X_valid, y_valid = shuffle(X_valid, y_valid, random_state)
+    X_test, y_test = shuffle(X_test, y_test, random_state)
+
+    return X_train, X_valid, X_test, y_train, y_valid, y_test
+
+
+
+
+cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat, noncars_test_feat, \
+noncars_valid_feat = get_features_all_datasets()
+
+X_train, X_valid, X_test, y_train, y_valid, y_test = generate_train_valid_test(cars_train_feat, cars_test_feat,
+                                                                               cars_valid_feat, noncars_train_feat,
+                                                                               noncars_test_feat, noncars_valid_feat)
+
+
 
 ### old ###
 
@@ -279,6 +372,9 @@ def apply_hog(img):
 
     out_img = hog_find_cars(img, ystart, ystop, scale, svc, X_scaler, orient, pix_per_cell, cell_per_block, spatial_size,
                             hist_bins)
+
+
+
 
 
 # ystart = 400
