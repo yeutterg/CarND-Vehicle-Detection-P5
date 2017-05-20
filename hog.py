@@ -3,12 +3,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pickle
 import cv2
+import time
+
 from skimage.feature import hog
 from img_processing import convert_color
 from features import bin_spatial, color_hist
 from sklearn.utils import shuffle
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import LinearSVC
+
 
 # dist_pickle = pickle.load(open("svc_pickle.p", "rb"))
 # svc = dist_pickle["svc"]
@@ -21,7 +24,7 @@ from sklearn.svm import LinearSVC
 #
 # img = mpimg.imread('test_image.jpg')
 
-def load_pickle(filename='data.p'):
+def load_data_pickle(filename='data.p'):
     """
     Loads the pickle file and returns training, validation, and test sets
 
@@ -40,6 +43,35 @@ def load_pickle(filename='data.p'):
     noncars_valid = data['noncars_valid']
 
     return cars_train, cars_test, cars_valid, noncars_train, noncars_test, noncars_valid
+
+
+def save_hog_pickle(cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat,
+                    noncars_test_feat, noncars_valid_feat, X_train, X_valid, X_test, y_train,
+                    y_valid, y_test, svc, filename='hog.p'):
+    print('Saving hog output.')
+    try:
+        with open(filename, 'wb') as file:
+            pickle.dump(
+                {
+                    # 'cars_train_feat': cars_train_feat,
+                    # 'cars_test_feat': cars_test_feat,
+                    # 'cars_valid_feat': cars_valid_feat,
+                    # 'noncars_train_feat': noncars_train_feat,
+                    # 'noncars_test_feat': noncars_test_feat,
+                    # 'noncars_valid_feat': noncars_valid_feat,
+                    'svc': svc,
+                    'X_train': X_train,
+                    'X_valid': X_valid,
+                    'X_test': X_test,
+                    'y_train': y_train,
+                    'y_valid': y_valid,
+                    'y_test': y_test
+                },
+                file, pickle.HIGHEST_PROTOCOL)
+    except Exception as e:
+        print('Error saving hog output to', filename, ':', e)
+        raise
+
 
 
 def get_hog_features_img(img, orient, pix_per_cell, cell_per_block,
@@ -151,12 +183,17 @@ def get_features_dataset(dataset, color_space='RGB', spatial_size=(32, 32), hist
     """
     features = []
 
+    t0 = time.time()
+
     # Extract features from each image in the dataset and append
     for file in dataset:
         img = mpimg.imread(file)
         features_img = get_features_img(img, color_space, spatial_size, hist_bins, orient, pix_per_cell,
                                         cell_per_block, hog_channel)
         features.append(features_img)
+
+    t1 = time.time()
+    print('Extracted %s features in %s seconds.' % (len(features_img), t1-t0))
 
     return features
 
@@ -177,7 +214,7 @@ def get_features_all_datasets():
     hog_channel = 'ALL'
 
     # Load the pickle file
-    cars_train, cars_test, cars_valid, noncars_train, noncars_test, noncars_valid = load_pickle()
+    cars_train, cars_test, cars_valid, noncars_train, noncars_test, noncars_valid = load_data_pickle()
 
     # Get features for each dataset
     cars_train_feat = get_features_dataset(cars_train, color_space, spatial_size, hist_bins,
@@ -296,6 +333,100 @@ def sv_classifier(X_train, X_valid, X_test, y_train, y_valid, y_test):
     return svc, valid_acc, test_acc
 
 
+def visualize(cars_train, noncars_train, cars_valid_feat, noncars_valid_feat, cars_valid,
+              noncars_valid, svc, orient, pix_per_cell, cells_per_block):
+    # Plot hog features for cars and noncars
+    f, ax = plt.subplots(6, 7, figsize=(20,10))
+    f.subplots_adjust(hspace=0.2, wspace=0.05)
+    colorspace = cv2.COLOR_RGB2HLS
+
+    for i, j, in enumerate([80, 800, 1800]):
+        img = plt.imread(cars_train[j])
+        img = cv2.cvtColor(img, colorspace)
+
+        ax[i, 0].imshow(img)
+        ax[i, 0].set_title('car {0}'.format(j))
+        ax[i, 0].set_xticks([])
+        ax[i, 0].set_yticks([])
+
+        for ch in range(3):
+            ax[i, ch+1].imshow(img[:, :, ch], cmap='gray')
+            ax[i, ch+1].set_title('img ch {0}'.format(j))
+            ax[i, ch+1].set_xticks([])
+            ax[i, ch+1].set_yticks([])
+
+            feat, h_img = get_hog_features_img(img, orient, pix_per_cell, cells_per_block)
+            ax[i, ch+4].imshow(img[:, :, ch], cmap='gray')
+            ax[i, ch+4].set_title('HOG ch {0}'.format(j))
+            ax[i, ch+4].set_xticks([])
+            ax[i, ch+4].set_yticks([])
+
+        img = plt.imread(noncars_train[j])
+        img = cv2.cvtColor(img, colorspace)
+
+        i += 3
+
+        ax[i, 0].imshow(img)
+        ax[i, 0].set_title('noncar {0}'.format(j))
+        ax[i, 0].set_xticks([])
+        ax[i, 0].set_yticks([])
+
+        for ch in range(3):
+            ax[i, ch + 1].imshow(img[:, :, ch], cmap='gray')
+            ax[i, ch + 1].set_title('img ch {0}'.format(j))
+            ax[i, ch + 1].set_xticks([])
+            ax[i, ch + 1].set_yticks([])
+
+            feat, h_img = get_hog_features_img(img, orient, pix_per_cell, cells_per_block)
+            ax[i, ch + 4].imshow(img[:, :, ch], cmap='gray')
+            ax[i, ch + 4].set_title('HOG ch {0}'.format(j))
+            ax[i, ch + 4].set_xticks([])
+            ax[i, ch + 4].set_yticks([])
+
+    plt.savefig('./output_images/hog_features.png')
+
+    # Plot false negatives
+    pred = svc.predict(cars_valid_feat)
+    cars_valid_feat_len = len(cars_valid_feat)
+    ind = np.where(pred != np.ones(cars_valid_feat_len))
+    ind = np.ravel(ind)
+    wrong_classification = [cars_valid[i] for i in ind]
+
+    f, ax = plt.subsplots(2, 10, figsize=(20, 5))
+    f.subplots_adjust(hspace=0.2, wspace=0.05)
+
+    for i, axis in enumerate(ax.flat):
+        axis.imshow(plt.imread(wrong_classification[i]))
+        axis.set_label('false neg {0}'.format(i))
+        axis.set_xticks([])
+        axis.set_yticks([])
+
+    print('# False positives:', len(wrong_classification))
+
+    plt.savefig('./output_images/false_neg.png')
+
+    # Plot false positives
+    pred = svc.predict(noncars_valid_feat)
+    noncars_valid_feat_len = len(noncars_valid_feat)
+    ind = np.where(pred != np.ones(noncars_valid_feat_len))
+    ind = np.ravel(ind)
+    wrong_classification = [noncars_valid[i] for i in ind]
+
+    f, ax = plt.subsplots(2, 10, figsize=(20, 5))
+    f.subplots_adjust(hspace=0.2, wspace=0.05)
+
+    for i, axis in enumerate(ax.flat):
+        axis.imshow(plt.imread(wrong_classification[i]))
+        axis.set_label('false pos {0}'.format(i))
+        axis.set_xticks([])
+        axis.set_yticks([])
+
+    print('# False negatives:', len(wrong_classification))
+
+    plt.savefig('./output_images/false_pos.png')
+
+
+
 
 
 def apply_hog():
@@ -315,8 +446,15 @@ def apply_hog():
     print('Validation Accuracy:', valid_acc)
     print('Test Accuracy:', test_acc)
 
+    save_hog_pickle(cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat,
+                    noncars_test_feat, noncars_valid_feat, X_train, X_valid, X_test, y_train,
+                    y_valid, y_test, svc)
+
 
 apply_hog()
+
+# visualize(cars_train, noncars_train, cars_valid_feat, noncars_valid_feat, cars_valid,
+#               noncars_valid, svc, orient, pix_per_cell, cells_per_block)
 
 
 ### old ###
