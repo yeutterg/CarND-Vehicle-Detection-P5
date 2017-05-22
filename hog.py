@@ -34,7 +34,7 @@ def load_data_pickle(filename='data.p'):
     return cars_train, cars_test, cars_valid, noncars_train, noncars_test, noncars_valid
 
 
-def save_hog_pickle(color_space, svc, stack, orient, hist_bins, spatial_size, pix_per_cell,
+def save_hog_pickle(color_space, svc, stack, scaler, orient, hist_bins, spatial_size, pix_per_cell,
                     cells_per_block, hog_channel, filename='hog.p'):
     print('Saving hog output.')
     try:
@@ -44,6 +44,7 @@ def save_hog_pickle(color_space, svc, stack, orient, hist_bins, spatial_size, pi
                     'svc': svc,
                     'color_space': color_space,
                     'stack': stack,
+                    'scaler': scaler,
                     'orient': orient,
                     'hist_bins': hist_bins,
                     'spatial_size': spatial_size,
@@ -60,7 +61,7 @@ def save_hog_pickle(color_space, svc, stack, orient, hist_bins, spatial_size, pi
 def get_hog_features_img(img, orient, pix_per_cell, cell_per_block,
                          vis=False, feature_vec=True):
     # Call with two outputs if vis==True
-    if vis == True:
+    if vis:
         features, hog_image = hog(img, orientations=orient,
                                   pixels_per_cell=(pix_per_cell, pix_per_cell),
                                   cells_per_block=(cell_per_block, cell_per_block),
@@ -75,65 +76,6 @@ def get_hog_features_img(img, orient, pix_per_cell, cell_per_block,
                        transform_sqrt=True,
                        visualise=vis, feature_vector=feature_vec)
         return features
-
-
-def get_features_img(img, color_space='RGB', spatial_size=(32, 32), hist_bins=32,
-                     orient=9, pix_per_cell=8, cell_per_block=2, hog_channel=2):
-    """
-
-    :param img:
-    :param color_space:
-    :param spatial_size:
-    :param hist_bins:
-    :param orient:
-    :param pix_per_cell:
-    :param cell_per_block:
-    :param hog_channel:
-    :return:
-    """
-    features = []
-
-    # If color space is other than RGB, convert
-    if color_space == 'RGB':
-        feature_img = np.copy(img)
-    else:
-        if color_space == 'HSV':
-            feature_img = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
-        elif color_space == 'LUV':
-            feature_img = cv2.cvtColor(img, cv2.COLOR_RGB2LUV)
-        elif color_space == 'HLS':
-            feature_img = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
-        elif color_space == 'YUV':
-            feature_img = cv2.cvtColor(img, cv2.COLOR_RGB2YUV)
-        elif color_space == 'YCrCb':
-            feature_img = cv2.cvtColor(img, cv2.COLOR_RGB2YCrCb)
-
-    # Calculate spatial features
-    spatial_features = bin_spatial(feature_img, size=spatial_size)
-    features.append(spatial_features)
-
-    # Calculate histogram features
-    hist_features = color_hist(feature_img, nbins=hist_bins)
-    features.append(hist_features)
-
-    # Calculate HOG features
-    if hog_channel == 'ALL':
-        hog_features = []
-
-        for ch in range(feature_img.shape[2]):
-            hog_features.extend(get_hog_features_img(feature_img[:, :, ch],
-                                                     orient, pix_per_cell, cell_per_block, vis=False,
-                                                     feature_vec=True))
-
-    else:
-        hog_features = get_hog_features_img(feature_img[:, :, hog_channel],
-                                            orient, pix_per_cell, cell_per_block, vis=False,
-                                            feature_vec=True)
-
-    features.append(hog_features)
-
-    # Return the concatenated array of features
-    return np.concatenate(features)
 
 
 def get_features_dataset(dataset, color_space='RGB', spatial_size=(32, 32), hist_bins=32,
@@ -157,8 +99,7 @@ def get_features_dataset(dataset, color_space='RGB', spatial_size=(32, 32), hist
     # Extract features from each image in the dataset and append
     for file in dataset:
         img = mpimg.imread(file)
-        features_img = get_features_img(img, color_space, spatial_size, hist_bins, orient, pix_per_cell,
-                                        cell_per_block, hog_channel)
+        features_img = get_hog_features_img(img, orient, pix_per_cell, cell_per_block, hog_channel, vis=True)
         features.append(features_img)
 
     t1 = time.time()
@@ -217,7 +158,7 @@ def scale_features(cars_train_feat, cars_test_feat, cars_valid_feat, noncars_tra
     scaler = StandardScaler().fit(stack)
 
     # Apply the scaler to the stack and return
-    return scaler.transform(stack)
+    return scaler.transform(stack), scaler
 
 
 def generate_train_valid_test(cars_train_feat, cars_test_feat, cars_valid_feat,
@@ -250,7 +191,7 @@ def generate_train_valid_test(cars_train_feat, cars_test_feat, cars_valid_feat,
     br5 = br4 + n_valid_len
 
     # Get the scaled feature stack
-    stack = scale_features(cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat,
+    stack, scaler = scale_features(cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat,
                            noncars_test_feat, noncars_valid_feat)
 
     # Reindex features from the scaled stack
@@ -274,7 +215,7 @@ def generate_train_valid_test(cars_train_feat, cars_test_feat, cars_valid_feat,
     X_valid, y_valid = shuffle(X_valid, y_valid, random_state=42)
     X_test, y_test = shuffle(X_test, y_test, random_state=42)
 
-    return X_train, X_valid, X_test, y_train, y_valid, y_test, stack
+    return X_train, X_valid, X_test, y_train, y_valid, y_test, stack, scaler
 
 
 def sv_classifier(X_train, X_valid, X_test, y_train, y_valid, y_test):
@@ -367,7 +308,7 @@ def apply_hog():
     cars_train, cars_test, cars_valid, noncars_train, noncars_test, noncars_valid = \
         get_features_all_datasets(color_space, orient, hist_bins, spatial_size, pix_per_cell, cells_per_block, hog_channel)
 
-    X_train, X_valid, X_test, y_train, y_valid, y_test, stack = \
+    X_train, X_valid, X_test, y_train, y_valid, y_test, stack, scaler = \
         generate_train_valid_test(cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat,
                                   noncars_test_feat, noncars_valid_feat)
 
@@ -376,7 +317,7 @@ def apply_hog():
     print('Validation Accuracy:', valid_acc)
     print('Test Accuracy:', test_acc)
 
-    save_hog_pickle(color_space, svc, stack, orient, hist_bins, spatial_size, pix_per_cell, cells_per_block, hog_channel)
+    save_hog_pickle(color_space, svc, stack, scaler, orient, hist_bins, spatial_size, pix_per_cell, cells_per_block, hog_channel)
 
     orient = 9
     pix_per_cell = 8
@@ -386,4 +327,5 @@ def apply_hog():
               noncars_valid, svc, orient, pix_per_cell, cells_per_block)
 
 
+# Uncomment this to run:
 apply_hog()
