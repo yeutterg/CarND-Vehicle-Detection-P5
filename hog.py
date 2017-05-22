@@ -34,19 +34,22 @@ def load_data_pickle(filename='data.p'):
     return cars_train, cars_test, cars_valid, noncars_train, noncars_test, noncars_valid
 
 
-def save_hog_pickle(X_train, X_valid, X_test, y_train, y_valid, y_test, svc, filename='hog.p'):
+def save_hog_pickle(color_space, svc, stack, orient, hist_bins, spatial_size, pix_per_cell,
+                    cells_per_block, hog_channel, filename='hog.p'):
     print('Saving hog output.')
     try:
         with open(filename, 'wb') as file:
             pickle.dump(
                 {
                     'svc': svc,
-                    'X_train': X_train,
-                    'X_valid': X_valid,
-                    'X_test': X_test,
-                    'y_train': y_train,
-                    'y_valid': y_valid,
-                    'y_test': y_test
+                    'color_space': color_space,
+                    'stack': stack,
+                    'orient': orient,
+                    'hist_bins': hist_bins,
+                    'spatial_size': spatial_size,
+                    'pix_per_cell': pix_per_cell,
+                    'cells_per_block': cells_per_block,
+                    'hog_channel': hog_channel
                 },
                 file, pickle.HIGHEST_PROTOCOL)
     except Exception as e:
@@ -164,20 +167,13 @@ def get_features_dataset(dataset, color_space='RGB', spatial_size=(32, 32), hist
     return features
 
 
-def get_features_all_datasets():
+def get_features_all_datasets(color_space, orient, hist_bins, spatial_size, pix_per_cell,
+                              cell_per_block, hog_channel):
     """
     Gets features for all datasets
 
     :return: cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat, noncars_test_feat, noncars_valid_feat
     """
-    # Parameters
-    color_space = 'HLS'
-    spatial_size = (32, 32)
-    hist_bins = 32
-    orient = 9
-    pix_per_cell = 8
-    cell_per_block = 2
-    hog_channel = 'ALL'
 
     # Load the pickle file
     cars_train, cars_test, cars_valid, noncars_train, noncars_test, noncars_valid = load_data_pickle()
@@ -278,7 +274,7 @@ def generate_train_valid_test(cars_train_feat, cars_test_feat, cars_valid_feat,
     X_valid, y_valid = shuffle(X_valid, y_valid, random_state=42)
     X_test, y_test = shuffle(X_test, y_test, random_state=42)
 
-    return X_train, X_valid, X_test, y_train, y_valid, y_test
+    return X_train, X_valid, X_test, y_train, y_valid, y_test, stack
 
 
 def sv_classifier(X_train, X_valid, X_test, y_train, y_valid, y_test):
@@ -358,21 +354,29 @@ def apply_hog():
 
     :return:
     """
-    cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat, noncars_test_feat, noncars_valid_feat, \
-    cars_train, cars_test, cars_valid, noncars_train, noncars_test, noncars_valid = get_features_all_datasets()
+    # Parameters
+    color_space = 'HLS'
+    spatial_size = (32, 32)
+    hist_bins = 32
+    orient = 9
+    pix_per_cell = 8
+    cells_per_block = 2
+    hog_channel = 'ALL'
 
-    X_train, X_valid, X_test, y_train, y_valid, y_test = generate_train_valid_test(cars_train_feat, cars_test_feat,
-                                                                                   cars_valid_feat, noncars_train_feat,
-                                                                                   noncars_test_feat,
-                                                                                   noncars_valid_feat)
+    cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat, noncars_test_feat, noncars_valid_feat, \
+    cars_train, cars_test, cars_valid, noncars_train, noncars_test, noncars_valid = \
+        get_features_all_datasets(color_space, orient, hist_bins, spatial_size, pix_per_cell, cells_per_block, hog_channel)
+
+    X_train, X_valid, X_test, y_train, y_valid, y_test, stack = \
+        generate_train_valid_test(cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat,
+                                  noncars_test_feat, noncars_valid_feat)
 
     svc, test_acc, valid_acc = sv_classifier(X_train, X_valid, X_test, y_train, y_valid, y_test)
 
     print('Validation Accuracy:', valid_acc)
     print('Test Accuracy:', test_acc)
 
-    # save_hog_pickle(caX_train, X_valid, X_test, y_train,
-    #                 y_valid, y_test, svc)
+    save_hog_pickle(color_space, svc, stack, orient, hist_bins, spatial_size, pix_per_cell, cells_per_block, hog_channel)
 
     orient = 9
     pix_per_cell = 8
