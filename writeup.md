@@ -65,26 +65,52 @@ The training, test, and validation data were saved in a pickle file for ease of 
 
 #### 1. Explain how (and identify where in your code) you extracted HOG features from the training images.
 
-The code for this step is contained in the first code cell of the IPython notebook (or in lines # through # of the file called `some_file.py`).  
+Extraction and exploration of HOG features is performed in the file `hog.py`.
 
-I started by reading in all the `vehicle` and `non-vehicle` images.  Here is an example of one of each of the `vehicle` and `non-vehicle` classes:
+I started by loading the training, validation, and test data for cars and non-cars in the method `load_data_pickle()`. 
 
-![alt text][image1]
+For each of the 6 datasets (cars training, cars validation, cars test, noncars training, noncars validation, noncars test), I extracted HOG features. This is performed in `get_features_all_datasets()`. The settings I settled upon were:
 
-I then explored different color spaces and different `skimage.hog()` parameters (`orientations`, `pixels_per_cell`, and `cells_per_block`).  I grabbed random images from each of the two classes and displayed them to get a feel for what the `skimage.hog()` output looks like.
+```
+# Parameters
+color_space = 'HLS'
+spatial_size = (32, 32)
+hist_bins = 32
+orient = 9
+pix_per_cell = 8
+cell_per_block = 2
+hog_channel = 'ALL'
+```
 
-Here is an example using the `YCrCb` color space and HOG parameters of `orientations=8`, `pixels_per_cell=(8, 8)` and `cells_per_block=(2, 2)`:
+I then processed the data into X_train, X_valid, X_test, y_train, y_valid, and y_test. This was performed in `generate_train_valid_test()`.
 
-
-![alt text][image2]
 
 #### 2. Explain how you settled on your final choice of HOG parameters.
 
-I tried various combinations of parameters and...
+The parameters listed above seem to give the best performance.
+
+For color space, it appears that a significant amount of information can be extracted using HLS. Specifically, the L channel is quite detailed, and the S channel provides some additional information. Subjetively, the H channel does not appear to provide much information.
+
+Other color spaces do not provide consistent results. RGB performs inconsistently depending on the lighting, and YCrCb does not seem to provide as much information as HLS. LUV and HSV seem to provide similar results to HLS, so these could probably be used interchangeably.
+
+Modifying the other values did not lead to results as good as those suggested in the project into. So, I ended up keeping the defaults:
+
+```
+orient = 9
+pix_per_cell = 8
+cell_per_block = 2
+```
 
 #### 3. Describe how (and identify where in your code) you trained a classifier using your selected HOG features (and color features if you used them).
 
-I trained a linear SVM using...
+I trained a linear support vector classifier from the scikit-learn package, as found in the function `sv_classifier()` in `hog.py`. Using the training, validation, and test sets generated earlier, I obtained a validation accuracy of 99.3% and a test accuracy of 99.3%. This was performed using all three HLS channels, although I suspect that the L and S channels were contributing most of the information. These were the settings used:
+
+```
+spatial_size = (32, 32)
+hist_bins = 32
+hog_channel = 'ALL'
+```
+
 
 ### Sliding Window Search
 

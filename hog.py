@@ -13,17 +13,6 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.svm import LinearSVC
 
 
-# dist_pickle = pickle.load(open("svc_pickle.p", "rb"))
-# svc = dist_pickle["svc"]
-# X_scaler = dist_pickle["scaler"]
-# orient = dist_pickle["orient"]
-# pix_per_cell = dist_pickle["pix_per_cell"]
-# cell_per_block = dist_pickle["cell_per_block"]
-# spatial_size = dist_pickle["spatial_size"]
-# hist_bins = dist_pickle["hist_bins"]
-#
-# img = mpimg.imread('test_image.jpg')
-
 def load_data_pickle(filename='data.p'):
     """
     Loads the pickle file and returns training, validation, and test sets
@@ -45,20 +34,12 @@ def load_data_pickle(filename='data.p'):
     return cars_train, cars_test, cars_valid, noncars_train, noncars_test, noncars_valid
 
 
-def save_hog_pickle(cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat,
-                    noncars_test_feat, noncars_valid_feat, X_train, X_valid, X_test, y_train,
-                    y_valid, y_test, svc, filename='hog.p'):
+def save_hog_pickle(X_train, X_valid, X_test, y_train, y_valid, y_test, svc, filename='hog.p'):
     print('Saving hog output.')
     try:
         with open(filename, 'wb') as file:
             pickle.dump(
                 {
-                    # 'cars_train_feat': cars_train_feat,
-                    # 'cars_test_feat': cars_test_feat,
-                    # 'cars_valid_feat': cars_valid_feat,
-                    # 'noncars_train_feat': noncars_train_feat,
-                    # 'noncars_test_feat': noncars_test_feat,
-                    # 'noncars_valid_feat': noncars_valid_feat,
                     'svc': svc,
                     'X_train': X_train,
                     'X_valid': X_valid,
@@ -73,9 +54,8 @@ def save_hog_pickle(cars_train_feat, cars_test_feat, cars_valid_feat, noncars_tr
         raise
 
 
-
 def get_hog_features_img(img, orient, pix_per_cell, cell_per_block,
-                        vis=False, feature_vec=True):
+                         vis=False, feature_vec=True):
     # Call with two outputs if vis==True
     if vis == True:
         features, hog_image = hog(img, orientations=orient,
@@ -92,7 +72,6 @@ def get_hog_features_img(img, orient, pix_per_cell, cell_per_block,
                        transform_sqrt=True,
                        visualise=vis, feature_vector=feature_vec)
         return features
-
 
 
 def get_features_img(img, color_space='RGB', spatial_size=(32, 32), hist_bins=32,
@@ -140,20 +119,18 @@ def get_features_img(img, color_space='RGB', spatial_size=(32, 32), hist_bins=32
 
         for ch in range(feature_img.shape[2]):
             hog_features.extend(get_hog_features_img(feature_img[:, :, ch],
-                                orient, pix_per_cell, cell_per_block, vis=False,
-                                feature_vec=True))
+                                                     orient, pix_per_cell, cell_per_block, vis=False,
+                                                     feature_vec=True))
 
     else:
         hog_features = get_hog_features_img(feature_img[:, :, hog_channel],
-                            orient, pix_per_cell, cell_per_block, vis=False,
-                            feature_vec=True)
+                                            orient, pix_per_cell, cell_per_block, vis=False,
+                                            feature_vec=True)
 
     features.append(hog_features)
 
     # Return the concatenated array of features
     return np.concatenate(features)
-
-
 
 
 def get_features_dataset(dataset, color_space='RGB', spatial_size=(32, 32), hist_bins=32,
@@ -182,7 +159,7 @@ def get_features_dataset(dataset, color_space='RGB', spatial_size=(32, 32), hist
         features.append(features_img)
 
     t1 = time.time()
-    print('Extracted %s features in %s seconds.' % (len(features_img), t1-t0))
+    print('Extracted %s features in %s seconds.' % (len(features_img), t1 - t0))
 
     return features
 
@@ -209,15 +186,15 @@ def get_features_all_datasets():
     cars_train_feat = get_features_dataset(cars_train, color_space, spatial_size, hist_bins,
                                            orient, pix_per_cell, cell_per_block, hog_channel)
     cars_test_feat = get_features_dataset(cars_test, color_space, spatial_size, hist_bins,
-                                           orient, pix_per_cell, cell_per_block, hog_channel)
+                                          orient, pix_per_cell, cell_per_block, hog_channel)
     cars_valid_feat = get_features_dataset(cars_valid, color_space, spatial_size, hist_bins,
                                            orient, pix_per_cell, cell_per_block, hog_channel)
     noncars_train_feat = get_features_dataset(noncars_train, color_space, spatial_size, hist_bins,
-                                           orient, pix_per_cell, cell_per_block, hog_channel)
+                                              orient, pix_per_cell, cell_per_block, hog_channel)
     noncars_test_feat = get_features_dataset(noncars_test, color_space, spatial_size, hist_bins,
-                                           orient, pix_per_cell, cell_per_block, hog_channel)
+                                             orient, pix_per_cell, cell_per_block, hog_channel)
     noncars_valid_feat = get_features_dataset(noncars_valid, color_space, spatial_size, hist_bins,
-                                           orient, pix_per_cell, cell_per_block, hog_channel)
+                                              orient, pix_per_cell, cell_per_block, hog_channel)
 
     return cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat, noncars_test_feat, noncars_valid_feat, \
            cars_train, cars_test, cars_valid, noncars_train, noncars_test, noncars_valid
@@ -326,7 +303,7 @@ def sv_classifier(X_train, X_valid, X_test, y_train, y_valid, y_test):
 def visualize(cars_train, noncars_train, cars_valid_feat, noncars_valid_feat, cars_valid,
               noncars_valid, svc, orient, pix_per_cell, cells_per_block):
     # Plot hog features for cars and noncars
-    f, ax = plt.subplots(6, 7, figsize=(20,10))
+    f, ax = plt.subplots(6, 7, figsize=(20, 10))
     f.subplots_adjust(hspace=0.2, wspace=0.05)
     colorspace = cv2.COLOR_RGB2HLS
 
@@ -340,16 +317,16 @@ def visualize(cars_train, noncars_train, cars_valid_feat, noncars_valid_feat, ca
         ax[i, 0].set_yticks([])
 
         for ch in range(3):
-            ax[i, ch+1].imshow(feat_img[:, :, ch], cmap='gray')
-            ax[i, ch+1].set_title('img ch {0}'.format(ch))
-            ax[i, ch+1].set_xticks([])
-            ax[i, ch+1].set_yticks([])
+            ax[i, ch + 1].imshow(feat_img[:, :, ch], cmap='gray')
+            ax[i, ch + 1].set_title('img ch {0}'.format(ch))
+            ax[i, ch + 1].set_xticks([])
+            ax[i, ch + 1].set_yticks([])
 
             feat, h_img = get_hog_features_img(feat_img[:, :, ch], orient, pix_per_cell, cells_per_block, vis=True)
-            ax[i, ch+4].imshow(h_img, cmap='gray')
-            ax[i, ch+4].set_title('HOG ch {0}'.format(ch))
-            ax[i, ch+4].set_xticks([])
-            ax[i, ch+4].set_yticks([])
+            ax[i, ch + 4].imshow(h_img, cmap='gray')
+            ax[i, ch + 4].set_title('HOG ch {0}'.format(ch))
+            ax[i, ch + 4].set_xticks([])
+            ax[i, ch + 4].set_yticks([])
 
         img = plt.imread(noncars_train[j])
         feat_img = cv2.cvtColor(img, colorspace)
@@ -376,17 +353,13 @@ def visualize(cars_train, noncars_train, cars_valid_feat, noncars_valid_feat, ca
     plt.savefig('./output_images/hog_features.png')
 
 
-
-
-
-
 def apply_hog():
     """
 
     :return:
     """
     cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat, noncars_test_feat, noncars_valid_feat, \
-        cars_train, cars_test, cars_valid, noncars_train, noncars_test, noncars_valid= get_features_all_datasets()
+    cars_train, cars_test, cars_valid, noncars_train, noncars_test, noncars_valid = get_features_all_datasets()
 
     X_train, X_valid, X_test, y_train, y_valid, y_test = generate_train_valid_test(cars_train_feat, cars_test_feat,
                                                                                    cars_valid_feat, noncars_train_feat,
@@ -398,8 +371,7 @@ def apply_hog():
     print('Validation Accuracy:', valid_acc)
     print('Test Accuracy:', test_acc)
 
-    # save_hog_pickle(cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat,
-    #                 noncars_test_feat, noncars_valid_feat, X_train, X_valid, X_test, y_train,
+    # save_hog_pickle(caX_train, X_valid, X_test, y_train,
     #                 y_valid, y_test, svc)
 
     orient = 9
