@@ -332,42 +332,42 @@ def visualize(cars_train, noncars_train, cars_valid_feat, noncars_valid_feat, ca
 
     for i, j, in enumerate([60, 800, 1800]):
         img = plt.imread(cars_train[j])
-        img = cv2.cvtColor(img, colorspace)
+        feat_img = cv2.cvtColor(img, colorspace)
 
-        ax[i, 0].imshow(img[:, :, 0], cmap='gray')
+        ax[i, 0].imshow(img)
         ax[i, 0].set_title('car {0}'.format(j))
         ax[i, 0].set_xticks([])
         ax[i, 0].set_yticks([])
 
         for ch in range(3):
-            ax[i, ch+1].imshow(img[:, :, ch], cmap='gray')
+            ax[i, ch+1].imshow(feat_img[:, :, ch], cmap='gray')
             ax[i, ch+1].set_title('img ch {0}'.format(ch))
             ax[i, ch+1].set_xticks([])
             ax[i, ch+1].set_yticks([])
 
-            feat, h_img = get_hog_features_img(img[:, :, ch], orient, pix_per_cell, cells_per_block, vis=True)
+            feat, h_img = get_hog_features_img(feat_img[:, :, ch], orient, pix_per_cell, cells_per_block, vis=True)
             ax[i, ch+4].imshow(h_img, cmap='gray')
             ax[i, ch+4].set_title('HOG ch {0}'.format(ch))
             ax[i, ch+4].set_xticks([])
             ax[i, ch+4].set_yticks([])
 
         img = plt.imread(noncars_train[j])
-        img = cv2.cvtColor(img, colorspace)
+        feat_img = cv2.cvtColor(img, colorspace)
 
         i += 3
 
-        ax[i, 0].imshow(img[:, :, 0], cmap='gray')
+        ax[i, 0].imshow(img)
         ax[i, 0].set_title('noncar {0}'.format(j))
         ax[i, 0].set_xticks([])
         ax[i, 0].set_yticks([])
 
         for ch in range(3):
-            ax[i, ch + 1].imshow(img[:, :, ch], cmap='gray')
+            ax[i, ch + 1].imshow(feat_img[:, :, ch], cmap='gray')
             ax[i, ch + 1].set_title('img ch {0}'.format(ch))
             ax[i, ch + 1].set_xticks([])
             ax[i, ch + 1].set_yticks([])
 
-            feat, h_img = get_hog_features_img(img[:, :, ch], orient, pix_per_cell, cells_per_block, vis=True)
+            feat, h_img = get_hog_features_img(feat_img[:, :, ch], orient, pix_per_cell, cells_per_block, vis=True)
             ax[i, ch + 4].imshow(h_img, cmap='gray')
             ax[i, ch + 4].set_title('HOG ch {0}'.format(ch))
             ax[i, ch + 4].set_xticks([])
