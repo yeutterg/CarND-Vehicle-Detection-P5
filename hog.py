@@ -6,7 +6,7 @@ import cv2
 import time
 
 from skimage.feature import hog
-from img_processing import convert_color
+from img_processing import convert_color, grayscale
 from features import bin_spatial, color_hist
 from sklearn.utils import shuffle
 from sklearn.preprocessing import StandardScaler
@@ -75,24 +75,13 @@ def save_hog_pickle(cars_train_feat, cars_test_feat, cars_valid_feat, noncars_tr
 
 
 def get_hog_features_img(img, orient, pix_per_cell, cell_per_block,
-                         vis=False, feature_vec=True):
-    """
-    Gets HOG features for an image
-
-    :param img:
-    :param orient:
-    :param pix_per_cell:
-    :param cell_per_block:
-    :param vis:
-    :param feature_vec:
-    :return:
-    """
+                        vis=False, feature_vec=True):
     # Call with two outputs if vis==True
     if vis == True:
         features, hog_image = hog(img, orientations=orient,
                                   pixels_per_cell=(pix_per_cell, pix_per_cell),
                                   cells_per_block=(cell_per_block, cell_per_block),
-                                  transform_sqrt=False,
+                                  transform_sqrt=True,
                                   visualise=vis, feature_vector=feature_vec)
         return features, hog_image
     # Otherwise call with one output
@@ -100,7 +89,7 @@ def get_hog_features_img(img, orient, pix_per_cell, cell_per_block,
         features = hog(img, orientations=orient,
                        pixels_per_cell=(pix_per_cell, pix_per_cell),
                        cells_per_block=(cell_per_block, cell_per_block),
-                       transform_sqrt=False,
+                       transform_sqrt=True,
                        visualise=vis, feature_vector=feature_vec)
         return features
 
@@ -230,7 +219,8 @@ def get_features_all_datasets():
     noncars_valid_feat = get_features_dataset(noncars_valid, color_space, spatial_size, hist_bins,
                                            orient, pix_per_cell, cell_per_block, hog_channel)
 
-    return cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat, noncars_test_feat, noncars_valid_feat
+    return cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat, noncars_test_feat, noncars_valid_feat, \
+           cars_train, cars_test, cars_valid, noncars_train, noncars_test, noncars_valid
 
 
 def scale_features(cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat,
@@ -340,24 +330,24 @@ def visualize(cars_train, noncars_train, cars_valid_feat, noncars_valid_feat, ca
     f.subplots_adjust(hspace=0.2, wspace=0.05)
     colorspace = cv2.COLOR_RGB2HLS
 
-    for i, j, in enumerate([80, 800, 1800]):
+    for i, j, in enumerate([60, 800, 1800]):
         img = plt.imread(cars_train[j])
         img = cv2.cvtColor(img, colorspace)
 
-        ax[i, 0].imshow(img)
+        ax[i, 0].imshow(img[:, :, 0], cmap='gray')
         ax[i, 0].set_title('car {0}'.format(j))
         ax[i, 0].set_xticks([])
         ax[i, 0].set_yticks([])
 
         for ch in range(3):
             ax[i, ch+1].imshow(img[:, :, ch], cmap='gray')
-            ax[i, ch+1].set_title('img ch {0}'.format(j))
+            ax[i, ch+1].set_title('img ch {0}'.format(ch))
             ax[i, ch+1].set_xticks([])
             ax[i, ch+1].set_yticks([])
 
-            feat, h_img = get_hog_features_img(img, orient, pix_per_cell, cells_per_block)
-            ax[i, ch+4].imshow(img[:, :, ch], cmap='gray')
-            ax[i, ch+4].set_title('HOG ch {0}'.format(j))
+            feat, h_img = get_hog_features_img(img[:, :, ch], orient, pix_per_cell, cells_per_block, vis=True)
+            ax[i, ch+4].imshow(h_img, cmap='gray')
+            ax[i, ch+4].set_title('HOG ch {0}'.format(ch))
             ax[i, ch+4].set_xticks([])
             ax[i, ch+4].set_yticks([])
 
@@ -366,64 +356,25 @@ def visualize(cars_train, noncars_train, cars_valid_feat, noncars_valid_feat, ca
 
         i += 3
 
-        ax[i, 0].imshow(img)
+        ax[i, 0].imshow(img[:, :, 0], cmap='gray')
         ax[i, 0].set_title('noncar {0}'.format(j))
         ax[i, 0].set_xticks([])
         ax[i, 0].set_yticks([])
 
         for ch in range(3):
             ax[i, ch + 1].imshow(img[:, :, ch], cmap='gray')
-            ax[i, ch + 1].set_title('img ch {0}'.format(j))
+            ax[i, ch + 1].set_title('img ch {0}'.format(ch))
             ax[i, ch + 1].set_xticks([])
             ax[i, ch + 1].set_yticks([])
 
-            feat, h_img = get_hog_features_img(img, orient, pix_per_cell, cells_per_block)
-            ax[i, ch + 4].imshow(img[:, :, ch], cmap='gray')
-            ax[i, ch + 4].set_title('HOG ch {0}'.format(j))
+            feat, h_img = get_hog_features_img(img[:, :, ch], orient, pix_per_cell, cells_per_block, vis=True)
+            ax[i, ch + 4].imshow(h_img, cmap='gray')
+            ax[i, ch + 4].set_title('HOG ch {0}'.format(ch))
             ax[i, ch + 4].set_xticks([])
             ax[i, ch + 4].set_yticks([])
 
     plt.savefig('./output_images/hog_features.png')
 
-    # Plot false negatives
-    pred = svc.predict(cars_valid_feat)
-    cars_valid_feat_len = len(cars_valid_feat)
-    ind = np.where(pred != np.ones(cars_valid_feat_len))
-    ind = np.ravel(ind)
-    wrong_classification = [cars_valid[i] for i in ind]
-
-    f, ax = plt.subsplots(2, 10, figsize=(20, 5))
-    f.subplots_adjust(hspace=0.2, wspace=0.05)
-
-    for i, axis in enumerate(ax.flat):
-        axis.imshow(plt.imread(wrong_classification[i]))
-        axis.set_label('false neg {0}'.format(i))
-        axis.set_xticks([])
-        axis.set_yticks([])
-
-    print('# False positives:', len(wrong_classification))
-
-    plt.savefig('./output_images/false_neg.png')
-
-    # Plot false positives
-    pred = svc.predict(noncars_valid_feat)
-    noncars_valid_feat_len = len(noncars_valid_feat)
-    ind = np.where(pred != np.ones(noncars_valid_feat_len))
-    ind = np.ravel(ind)
-    wrong_classification = [noncars_valid[i] for i in ind]
-
-    f, ax = plt.subsplots(2, 10, figsize=(20, 5))
-    f.subplots_adjust(hspace=0.2, wspace=0.05)
-
-    for i, axis in enumerate(ax.flat):
-        axis.imshow(plt.imread(wrong_classification[i]))
-        axis.set_label('false pos {0}'.format(i))
-        axis.set_xticks([])
-        axis.set_yticks([])
-
-    print('# False negatives:', len(wrong_classification))
-
-    plt.savefig('./output_images/false_pos.png')
 
 
 
@@ -434,7 +385,8 @@ def apply_hog():
 
     :return:
     """
-    cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat, noncars_test_feat, noncars_valid_feat = get_features_all_datasets()
+    cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat, noncars_test_feat, noncars_valid_feat, \
+        cars_train, cars_test, cars_valid, noncars_train, noncars_test, noncars_valid= get_features_all_datasets()
 
     X_train, X_valid, X_test, y_train, y_valid, y_test = generate_train_valid_test(cars_train_feat, cars_test_feat,
                                                                                    cars_valid_feat, noncars_train_feat,
@@ -446,111 +398,16 @@ def apply_hog():
     print('Validation Accuracy:', valid_acc)
     print('Test Accuracy:', test_acc)
 
-    save_hog_pickle(cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat,
-                    noncars_test_feat, noncars_valid_feat, X_train, X_valid, X_test, y_train,
-                    y_valid, y_test, svc)
+    # save_hog_pickle(cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat,
+    #                 noncars_test_feat, noncars_valid_feat, X_train, X_valid, X_test, y_train,
+    #                 y_valid, y_test, svc)
+
+    orient = 9
+    pix_per_cell = 8
+    cells_per_block = 2
+
+    visualize(cars_train, noncars_train, cars_valid_feat, noncars_valid_feat, cars_valid,
+              noncars_valid, svc, orient, pix_per_cell, cells_per_block)
 
 
 apply_hog()
-
-# visualize(cars_train, noncars_train, cars_valid_feat, noncars_valid_feat, cars_valid,
-#               noncars_valid, svc, orient, pix_per_cell, cells_per_block)
-
-
-### old ###
-
-
-
-# # Define a single function that can extract features using hog sub-sampling and make predictions
-# def hog_find_cars(img, ystart, ystop, scale, svc, X_scaler, orient, pix_per_cell, cell_per_block, spatial_size, hist_bins):
-#     draw_img = np.copy(img)
-#     img = img.astype(np.float32) / 255
-#
-#     img_tosearch = img[ystart:ystop, :, :]
-#     ctrans_tosearch = convert_color(img_tosearch, conv='RGB2YCrCb')
-#     if scale != 1:
-#         imshape = ctrans_tosearch.shape
-#         ctrans_tosearch = cv2.resize(ctrans_tosearch, (np.int(imshape[1] / scale), np.int(imshape[0] / scale)))
-#
-#     ch1 = ctrans_tosearch[:, :, 0]
-#     ch2 = ctrans_tosearch[:, :, 1]
-#     ch3 = ctrans_tosearch[:, :, 2]
-#
-#     # Define blocks and steps as above
-#     nxblocks = (ch1.shape[1] // pix_per_cell) - cell_per_block + 1
-#     nyblocks = (ch1.shape[0] // pix_per_cell) - cell_per_block + 1
-#     nfeat_per_block = orient * cell_per_block ** 2
-#
-#     # 64 was the orginal sampling rate, with 8 cells and 8 pix per cell
-#     window = 64
-#     nblocks_per_window = (window // pix_per_cell) - cell_per_block + 1
-#     cells_per_step = 2  # Instead of overlap, define how many cells to step
-#     nxsteps = (nxblocks - nblocks_per_window) // cells_per_step
-#     nysteps = (nyblocks - nblocks_per_window) // cells_per_step
-#
-#     # Compute individual channel HOG features for the entire image
-#     hog1 = get_hog_features(ch1, orient, pix_per_cell, cell_per_block, feature_vec=False)
-#     hog2 = get_hog_features(ch2, orient, pix_per_cell, cell_per_block, feature_vec=False)
-#     hog3 = get_hog_features(ch3, orient, pix_per_cell, cell_per_block, feature_vec=False)
-#
-#     for xb in range(nxsteps):
-#         for yb in range(nysteps):
-#             ypos = yb * cells_per_step
-#             xpos = xb * cells_per_step
-#             # Extract HOG for this patch
-#             hog_feat1 = hog1[ypos:ypos + nblocks_per_window, xpos:xpos + nblocks_per_window].ravel()
-#             hog_feat2 = hog2[ypos:ypos + nblocks_per_window, xpos:xpos + nblocks_per_window].ravel()
-#             hog_feat3 = hog3[ypos:ypos + nblocks_per_window, xpos:xpos + nblocks_per_window].ravel()
-#             hog_features = np.hstack((hog_feat1, hog_feat2, hog_feat3))
-#
-#             xleft = xpos * pix_per_cell
-#             ytop = ypos * pix_per_cell
-#
-#             # Extract the image patch
-#             subimg = cv2.resize(ctrans_tosearch[ytop:ytop + window, xleft:xleft + window], (64, 64))
-#
-#             # Get color features
-#             spatial_features = bin_spatial(subimg, size=spatial_size)
-#             hist_features = color_hist(subimg, nbins=hist_bins)
-#
-#             # Scale features and make a prediction
-#             test_features = X_scaler.transform(
-#                 np.hstack((spatial_features, hist_features, hog_features)).reshape(1, -1))
-#             # test_features = X_scaler.transform(np.hstack((shape_feat, hist_feat)).reshape(1, -1))
-#             test_prediction = svc.predict(test_features)
-#
-#             if test_prediction == 1:
-#                 xbox_left = np.int(xleft * scale)
-#                 ytop_draw = np.int(ytop * scale)
-#                 win_draw = np.int(window * scale)
-#                 cv2.rectangle(draw_img, (xbox_left, ytop_draw + ystart),
-#                               (xbox_left + win_draw, ytop_draw + win_draw + ystart), (0, 0, 255), 6)
-#
-#     return draw_img
-#
-#
-# def apply_hog(img):
-#     """
-#
-#     :param img: The image
-#     :return:
-#     """
-#     ystart = 400
-#     ystop = 656
-#     scale = 1.5
-#
-#     out_img = hog_find_cars(img, ystart, ystop, scale, svc, X_scaler, orient, pix_per_cell, cell_per_block, spatial_size,
-#                             hist_bins)
-
-
-
-
-
-# ystart = 400
-# ystop = 656
-# scale = 1.5
-#
-# out_img = find_cars(img, ystart, ystop, scale, svc, X_scaler, orient, pix_per_cell, cell_per_block, spatial_size,
-#                     hist_bins)
-#
-# plt.imshow(out_img)
