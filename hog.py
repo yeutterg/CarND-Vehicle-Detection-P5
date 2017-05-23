@@ -34,7 +34,7 @@ def load_data_pickle(filename='data.p'):
     return cars_train, cars_test, cars_valid, noncars_train, noncars_test, noncars_valid
 
 
-def save_hog_pickle(color_space, svc, stack, orient, hist_bins, spatial_size, pix_per_cell,
+def save_hog_pickle(color_space, svc, stack, scaler, orient, hist_bins, spatial_size, pix_per_cell,
                     cells_per_block, hog_channel, filename='hog.p'):
     print('Saving hog output.')
     try:
@@ -44,6 +44,7 @@ def save_hog_pickle(color_space, svc, stack, orient, hist_bins, spatial_size, pi
                     'svc': svc,
                     'color_space': color_space,
                     'stack': stack,
+                    'scaler': scaler,
                     'orient': orient,
                     'hist_bins': hist_bins,
                     'spatial_size': spatial_size,
@@ -207,7 +208,7 @@ def scale_features(cars_train_feat, cars_test_feat, cars_valid_feat, noncars_tra
     :param noncars_train_feat:
     :param noncars_test_feat:
     :param noncars_valid_feat:
-    :return: The scaled feature stack
+    :return: The scaled feature stack, the fit scaler
     """
     # Stack the features into a matrix
     stack = np.vstack((cars_train_feat, cars_valid_feat, cars_test_feat, noncars_train_feat,
@@ -217,7 +218,7 @@ def scale_features(cars_train_feat, cars_test_feat, cars_valid_feat, noncars_tra
     scaler = StandardScaler().fit(stack)
 
     # Apply the scaler to the stack and return
-    return scaler.transform(stack)
+    return scaler.transform(stack), scaler
 
 
 def generate_train_valid_test(cars_train_feat, cars_test_feat, cars_valid_feat,
@@ -250,7 +251,7 @@ def generate_train_valid_test(cars_train_feat, cars_test_feat, cars_valid_feat,
     br5 = br4 + n_valid_len
 
     # Get the scaled feature stack
-    stack = scale_features(cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat,
+    stack, scaler = scale_features(cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat,
                            noncars_test_feat, noncars_valid_feat)
 
     # Reindex features from the scaled stack
@@ -274,7 +275,7 @@ def generate_train_valid_test(cars_train_feat, cars_test_feat, cars_valid_feat,
     X_valid, y_valid = shuffle(X_valid, y_valid, random_state=42)
     X_test, y_test = shuffle(X_test, y_test, random_state=42)
 
-    return X_train, X_valid, X_test, y_train, y_valid, y_test, stack
+    return X_train, X_valid, X_test, y_train, y_valid, y_test, stack, scaler
 
 
 def sv_classifier(X_train, X_valid, X_test, y_train, y_valid, y_test):
@@ -367,7 +368,7 @@ def apply_hog():
     cars_train, cars_test, cars_valid, noncars_train, noncars_test, noncars_valid = \
         get_features_all_datasets(color_space, orient, hist_bins, spatial_size, pix_per_cell, cells_per_block, hog_channel)
 
-    X_train, X_valid, X_test, y_train, y_valid, y_test, stack = \
+    X_train, X_valid, X_test, y_train, y_valid, y_test, stack, scaler = \
         generate_train_valid_test(cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat,
                                   noncars_test_feat, noncars_valid_feat)
 
@@ -376,7 +377,7 @@ def apply_hog():
     print('Validation Accuracy:', valid_acc)
     print('Test Accuracy:', test_acc)
 
-    save_hog_pickle(color_space, svc, stack, orient, hist_bins, spatial_size, pix_per_cell, cells_per_block, hog_channel)
+    save_hog_pickle(color_space, svc, stack, scaler, orient, hist_bins, spatial_size, pix_per_cell, cells_per_block, hog_channel)
 
     orient = 9
     pix_per_cell = 8
