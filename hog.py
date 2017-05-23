@@ -99,7 +99,7 @@ def get_features_dataset(dataset, color_space='RGB', spatial_size=(32, 32), hist
     # Extract features from each image in the dataset and append
     for file in dataset:
         img = mpimg.imread(file)
-        features_img = get_hog_features_img(img, orient, pix_per_cell, cell_per_block, hog_channel, vis=True)
+        features_img = get_hog_features_img(img, orient, pix_per_cell, cell_per_block, hog_channel, True)
         features.append(features_img)
 
     t1 = time.time()
