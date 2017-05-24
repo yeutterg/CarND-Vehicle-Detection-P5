@@ -5,12 +5,10 @@ import pickle
 import cv2
 import time
 
-from skimage.feature import hog
-from img_processing import convert_color, grayscale
-from features import bin_spatial, color_hist
 from sklearn.utils import shuffle
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import LinearSVC
+from features import get_features_img, get_hog_features_img
 
 
 def load_data_pickle(filename='data.p'):
@@ -56,85 +54,6 @@ def save_hog_pickle(color_space, svc, stack, scaler, orient, hist_bins, spatial_
     except Exception as e:
         print('Error saving hog output to', filename, ':', e)
         raise
-
-
-def get_hog_features_img(img, orient, pix_per_cell, cell_per_block,
-                         vis=False, feature_vec=True):
-    # Call with two outputs if vis==True
-    if vis == True:
-        features, hog_image = hog(img, orientations=orient,
-                                  pixels_per_cell=(pix_per_cell, pix_per_cell),
-                                  cells_per_block=(cell_per_block, cell_per_block),
-                                  transform_sqrt=True,
-                                  visualise=vis, feature_vector=feature_vec)
-        return features, hog_image
-    # Otherwise call with one output
-    else:
-        features = hog(img, orientations=orient,
-                       pixels_per_cell=(pix_per_cell, pix_per_cell),
-                       cells_per_block=(cell_per_block, cell_per_block),
-                       transform_sqrt=True,
-                       visualise=vis, feature_vector=feature_vec)
-        return features
-
-
-def get_features_img(img, color_space='RGB', spatial_size=(32, 32), hist_bins=32,
-                     orient=9, pix_per_cell=8, cell_per_block=2, hog_channel=2):
-    """
-
-    :param img:
-    :param color_space:
-    :param spatial_size:
-    :param hist_bins:
-    :param orient:
-    :param pix_per_cell:
-    :param cell_per_block:
-    :param hog_channel:
-    :return:
-    """
-    features = []
-
-    # If color space is other than RGB, convert
-    if color_space == 'RGB':
-        feature_img = np.copy(img)
-    else:
-        if color_space == 'HSV':
-            feature_img = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
-        elif color_space == 'LUV':
-            feature_img = cv2.cvtColor(img, cv2.COLOR_RGB2LUV)
-        elif color_space == 'HLS':
-            feature_img = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
-        elif color_space == 'YUV':
-            feature_img = cv2.cvtColor(img, cv2.COLOR_RGB2YUV)
-        elif color_space == 'YCrCb':
-            feature_img = cv2.cvtColor(img, cv2.COLOR_RGB2YCrCb)
-
-    # Calculate spatial features
-    spatial_features = bin_spatial(feature_img, size=spatial_size)
-    features.append(spatial_features)
-
-    # Calculate histogram features
-    hist_features = color_hist(feature_img, nbins=hist_bins)
-    features.append(hist_features)
-
-    # Calculate HOG features
-    if hog_channel == 'ALL':
-        hog_features = []
-
-        for ch in range(feature_img.shape[2]):
-            hog_features.extend(get_hog_features_img(feature_img[:, :, ch],
-                                                     orient, pix_per_cell, cell_per_block, vis=False,
-                                                     feature_vec=True))
-
-    else:
-        hog_features = get_hog_features_img(feature_img[:, :, hog_channel],
-                                            orient, pix_per_cell, cell_per_block, vis=False,
-                                            feature_vec=True)
-
-    features.append(hog_features)
-
-    # Return the concatenated array of features
-    return np.concatenate(features)
 
 
 def get_features_dataset(dataset, color_space='RGB', spatial_size=(32, 32), hist_bins=32,
@@ -192,6 +111,14 @@ def get_features_all_datasets(color_space, orient, hist_bins, spatial_size, pix_
                                              orient, pix_per_cell, cell_per_block, hog_channel)
     noncars_valid_feat = get_features_dataset(noncars_valid, color_space, spatial_size, hist_bins,
                                               orient, pix_per_cell, cell_per_block, hog_channel)
+
+    # debug
+    print('ctf', len(cars_test_feat))
+    print('cvf', len(cars_valid_feat))
+    print('cTf', len(cars_test_feat))
+    print('ntf', len(noncars_train_feat))
+    print('nvf', len(noncars_valid_feat))
+    print('nTf', len(noncars_test_feat))
 
     return cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat, noncars_test_feat, noncars_valid_feat, \
            cars_train, cars_test, cars_valid, noncars_train, noncars_test, noncars_valid
