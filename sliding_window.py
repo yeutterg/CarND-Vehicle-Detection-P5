@@ -8,8 +8,7 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 
-from features import extract_features_img
-from sklearn.preprocessing import StandardScaler
+from features import single_img_features
 
 
 def load_hog_pickle(filename='hog.p'):
@@ -71,9 +70,19 @@ def draw_boxes(img, bboxes, color=(0, 0, 255), thick=6):
 
 # Define a function you will pass an image
 # and the list of windows to be searched (output of slide_windows())
-def search_windows(img, windows, clf, scaler, color_space='RGB',
-                    spatial_size=(32, 32), hist_bins=32,
-                    hist_range=(0, 256)):
+def search_windows(img, windows, clf, scaler, color_space='RGB', spatial_size=(32, 32), hist_bins=32,
+                   orient=9, pix_per_cell=8, cell_per_block=2, hog_channel='ALL'):
+    """
+
+    :param img:
+    :param windows:
+    :param clf:
+    :param scaler:
+    :param color_space:
+    :param spatial_size:
+    :param hist_bins:
+    :return:
+    """
     # 1) Create an empty list to receive positive detection windows
     on_windows = []
 
@@ -83,17 +92,14 @@ def search_windows(img, windows, clf, scaler, color_space='RGB',
         test_img = cv2.resize(img[window[0][1]:window[1][1], window[0][0]:window[1][0]], (64, 64))
 
         # 4) Extract features for that window using single_img_features()
-        features = extract_features_img(test_img, color_space, spatial_size, hist_bins, hist_range)
+        features = single_img_features(test_img, color_space=color_space,
+                                       spatial_size=spatial_size, hist_bins=hist_bins,
+                                       orient=orient, pix_per_cell=pix_per_cell,
+                                       cell_per_block=cell_per_block,
+                                       hog_channel=hog_channel)
 
         # 5) Scale extracted features to be fed to classifier
         test_features = scaler.transform(np.array(features).reshape(1, -1))
-
-        # print(features.shape)
-        # features = features.reshape(1, -1)
-        # scaler = StandardScaler().fit(features)
-        # test_features = scaler.transform(features)
-
-        # test_features = scaler.transform(features)
 
         # 6) Predict using your classifier
         prediction = clf.predict(test_features)
@@ -121,17 +127,24 @@ def slide_window(img, x_start_stop=[None, None], y_start_stop=[None, None],
         y_start_stop[0] = 0
     if y_start_stop[1] == None:
         y_start_stop[1] = img.shape[0]
+
     # Compute the span of the region to be searched
     xspan = x_start_stop[1] - x_start_stop[0]
     yspan = y_start_stop[1] - y_start_stop[0]
+
     # Compute the number of pixels per step in x/y
     nx_pix_per_step = np.int(xy_window[0] * (1 - xy_overlap[0]))
     ny_pix_per_step = np.int(xy_window[1] * (1 - xy_overlap[1]))
+
     # Compute the number of windows in x/y
-    nx_windows = np.int(xspan / nx_pix_per_step) - 1
-    ny_windows = np.int(yspan / ny_pix_per_step) - 1
+    nx_buffer = np.int(xy_window[0] * (xy_overlap[0]))
+    ny_buffer = np.int(xy_window[1] * (xy_overlap[1]))
+    nx_windows = np.int((xspan - nx_buffer) / nx_pix_per_step)
+    ny_windows = np.int((yspan - ny_buffer) / ny_pix_per_step)
+
     # Initialize a list to append window positions to
     window_list = []
+
     # Loop through finding x and y window positions
     # Note: you could vectorize this step, but in practice
     # you'll be considering windows one by one with your
@@ -146,11 +159,12 @@ def slide_window(img, x_start_stop=[None, None], y_start_stop=[None, None],
 
             # Append window position to list
             window_list.append(((startx, starty), (endx, endy)))
+
     # Return the list of windows
     return window_list
 
 
-def search_image(img, svc, stack, color_space, spatial_size, hist_bins,
+def search_image(img, svc, scaler, color_space, spatial_size, hist_bins,
                  orient, pix_per_cell, cell_per_block, hog_channel):
     """
     Performs a search on the image and finds all "hot" windows
@@ -177,8 +191,8 @@ def search_image(img, svc, stack, color_space, spatial_size, hist_bins,
 
         all_windows.extend(windows)
 
-        hot_windows += search_windows(img, windows, svc, stack, color_space, spatial_size,
-                                      hist_bins)
+        hot_windows += search_windows(img, windows, svc, scaler, color_space, spatial_size, hist_bins, pix_per_cell,
+                                      cell_per_block, hog_channel)
 
     return hot_windows, all_windows
 
@@ -202,6 +216,8 @@ def img_process_pipeline(filename, color_space, svc, scaler, orient, hist_bins, 
     """
     # Load the image
     img = mpimg.imread(filename[0])
+    if filename[0].split('.')[2] == 'jpg':
+        img = img.astype(np.float32) / 255
 
     # Search for hot windows at all scales
     t0 = time.time()
@@ -225,7 +241,7 @@ def img_process_pipeline(filename, color_space, svc, scaler, orient, hist_bins, 
         elif i == 3:
             color = (255, 255, 255)
 
-    img_all_windows = draw_boxes(img_all_windows, all_windows[i], color, 4)
+        img_all_windows = draw_boxes(img_all_windows, all_windows[i], color, 4)
 
     # Plot and save the output
     if saveFig:

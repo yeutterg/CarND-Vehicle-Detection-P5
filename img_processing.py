@@ -12,7 +12,6 @@ def convert_color(img, conv='RGB2YCrCb'):
 def grayscale(img):
     """
     Converts a BGR image to grayscale
-
     :param img: The image in BGR color format
     :return The grayscale image
     """
