@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from features import extract_features_img, get_features_img
-from sklearn.preprocessing import StandardScaler
 
 
 def load_hog_pickle(filename='hog.p'):
