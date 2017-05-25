@@ -8,7 +8,7 @@ import time
 from sklearn.utils import shuffle
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import LinearSVC
-from features import get_features_img, get_hog_features_img
+from features import single_img_features, get_hog_features
 
 
 def load_data_pickle(filename='data.p'):
@@ -77,7 +77,7 @@ def get_features_dataset(dataset, color_space='RGB', spatial_size=(32, 32), hist
     # Extract features from each image in the dataset and append
     for file in dataset:
         img = mpimg.imread(file)
-        features_img = get_features_img(img, color_space, spatial_size, hist_bins, orient, pix_per_cell,
+        features_img = single_img_features(img, color_space, spatial_size, hist_bins, orient, pix_per_cell,
                                         cell_per_block, hog_channel)
         features.append(features_img)
 
@@ -112,13 +112,13 @@ def get_features_all_datasets(color_space, orient, hist_bins, spatial_size, pix_
     noncars_valid_feat = get_features_dataset(noncars_valid, color_space, spatial_size, hist_bins,
                                               orient, pix_per_cell, cell_per_block, hog_channel)
 
-    # debug
-    print('ctf', len(cars_test_feat))
-    print('cvf', len(cars_valid_feat))
-    print('cTf', len(cars_test_feat))
-    print('ntf', len(noncars_train_feat))
-    print('nvf', len(noncars_valid_feat))
-    print('nTf', len(noncars_test_feat))
+    # # debug
+    # print('ctf', len(cars_test_feat))
+    # print('cvf', len(cars_valid_feat))
+    # print('cTf', len(cars_test_feat))
+    # print('ntf', len(noncars_train_feat))
+    # print('nvf', len(noncars_valid_feat))
+    # print('nTf', len(noncars_test_feat))
 
     return cars_train_feat, cars_test_feat, cars_valid_feat, noncars_train_feat, noncars_test_feat, noncars_valid_feat, \
            cars_train, cars_test, cars_valid, noncars_train, noncars_test, noncars_valid
@@ -246,7 +246,7 @@ def visualize(cars_train, noncars_train, cars_valid_feat, noncars_valid_feat, ca
             ax[i, ch + 1].set_xticks([])
             ax[i, ch + 1].set_yticks([])
 
-            feat, h_img = get_hog_features_img(feat_img[:, :, ch], orient, pix_per_cell, cells_per_block, vis=True)
+            feat, h_img = get_hog_features(feat_img[:, :, ch], orient, pix_per_cell, cells_per_block, vis=True)
             ax[i, ch + 4].imshow(h_img, cmap='gray')
             ax[i, ch + 4].set_title('HOG ch {0}'.format(ch))
             ax[i, ch + 4].set_xticks([])
@@ -268,7 +268,7 @@ def visualize(cars_train, noncars_train, cars_valid_feat, noncars_valid_feat, ca
             ax[i, ch + 1].set_xticks([])
             ax[i, ch + 1].set_yticks([])
 
-            feat, h_img = get_hog_features_img(feat_img[:, :, ch], orient, pix_per_cell, cells_per_block, vis=True)
+            feat, h_img = get_hog_features(feat_img[:, :, ch], orient, pix_per_cell, cells_per_block, vis=True)
             ax[i, ch + 4].imshow(h_img, cmap='gray')
             ax[i, ch + 4].set_title('HOG ch {0}'.format(ch))
             ax[i, ch + 4].set_xticks([])

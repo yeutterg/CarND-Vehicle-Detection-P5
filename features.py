@@ -37,8 +37,8 @@ def color_hist(img, nbins=32):
     return hist_features
 
 
-def get_hog_features_img(img, orient, pix_per_cell, cell_per_block,
-                         vis=False, feature_vec=True):
+def get_hog_features(img, orient, pix_per_cell, cell_per_block,
+                     vis=False, feature_vec=True):
     """
 
     :param img:
@@ -68,8 +68,9 @@ def get_hog_features_img(img, orient, pix_per_cell, cell_per_block,
         return features
 
 
-def get_features_img(img, color_space='RGB', spatial_size=(32, 32), hist_bins=32,
-                     orient=9, pix_per_cell=8, cell_per_block=2, hog_channel='ALL'):
+def single_img_features(img, color_space='RGB', spatial_size=(32, 32), hist_bins=32,
+                        orient=9, pix_per_cell=8, cell_per_block=2, hog_channel='ALL',
+                        spatial_feat=True, hist_feat=True, hog_feat=True):
     """
 
     :param img:
@@ -82,102 +83,51 @@ def get_features_img(img, color_space='RGB', spatial_size=(32, 32), hist_bins=32
     :param hog_channel:
     :return:
     """
-    features = []
+    # 1) Define an empty list to receive features
+    img_features = []
 
-    # If color space is other than RGB, convert
-    if color_space == 'RGB':
-        feature_img = np.copy(img)
-    else:
+    # 2) Apply color conversion if other than 'RGB'
+    if color_space != 'RGB':
         if color_space == 'HSV':
-            feature_img = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+            feature_image = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
         elif color_space == 'LUV':
-            feature_img = cv2.cvtColor(img, cv2.COLOR_RGB2LUV)
+            feature_image = cv2.cvtColor(img, cv2.COLOR_RGB2LUV)
         elif color_space == 'HLS':
-            feature_img = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
+            feature_image = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
         elif color_space == 'YUV':
-            feature_img = cv2.cvtColor(img, cv2.COLOR_RGB2YUV)
+            feature_image = cv2.cvtColor(img, cv2.COLOR_RGB2YUV)
         elif color_space == 'YCrCb':
-            feature_img = cv2.cvtColor(img, cv2.COLOR_RGB2YCrCb)
-
-    # Calculate spatial features
-    spatial_features = bin_spatial(feature_img, size=spatial_size)
-    features.append(spatial_features)
-
-    # Calculate histogram features
-    hist_features = color_hist(feature_img, nbins=hist_bins)
-    features.append(hist_features)
-
-    # Calculate HOG features
-    if hog_channel == 'ALL':
-        hog_features = []
-
-        for ch in range(feature_img.shape[2]):
-            hog_features.append(get_hog_features_img(feature_img[:, :, ch], orient, pix_per_cell,
-                                                     cell_per_block, vis=False, feature_vec=True))
-
-        hog_features = np.ravel(hog_features)
-
+            feature_image = cv2.cvtColor(img, cv2.COLOR_RGB2YCrCb)
     else:
-        hog_features = get_hog_features_img(feature_img[:, :, hog_channel],
-                                            orient, pix_per_cell, cell_per_block, vis=False,
-                                            feature_vec=True)
+        feature_image = np.copy(img)
 
-    features.append(hog_features)
+    # 3) Compute spatial features if flag is set
+    if spatial_feat == True:
+        spatial_features = bin_spatial(feature_image, size=spatial_size)
 
-    # Return the concatenated array of features
-    return np.concatenate(features)
+        # 4) Append features to list
+        img_features.append(spatial_features)
 
+    # 5) Compute histogram features if flag is set
+    if hist_feat == True:
+        hist_features = color_hist(feature_image, nbins=hist_bins)
 
-def extract_features_img(image, cspace='BGR', spatial_size=(32, 32), hist_bins=32):
-    """
+        # 6) Append features to list
+        img_features.append(hist_features)
 
-    :param image:
-    :param cspace:
-    :param spatial_size:
-    :param hist_bins:
-    :return:
-    """
-    # apply color conversion if other than 'RGB'
-    if cspace != 'RGB':
-        if cspace == 'HSV':
-            feature_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
-        elif cspace == 'LUV':
-            feature_image = cv2.cvtColor(image, cv2.COLOR_RGB2LUV)
-        elif cspace == 'HLS':
-            feature_image = cv2.cvtColor(image, cv2.COLOR_RGB2HLS)
-        elif cspace == 'YUV':
-            feature_image = cv2.cvtColor(image, cv2.COLOR_RGB2YUV)
-    else:
-        feature_image = np.copy(image)
+    # 7) Compute HOG features if flag is set
+    if hog_feat:
+        if hog_channel == 'ALL':
+            hog_features = []
+            for channel in range(feature_image.shape[2]):
+                hog_features.extend(get_hog_features(feature_image[:, :, channel],
+                                                     orient, pix_per_cell, cell_per_block,
+                                                     vis=False, feature_vec=True))
+        else:
+            hog_features = get_hog_features(feature_image[:, :, hog_channel], orient,
+                                            pix_per_cell, cell_per_block, vis=False, feature_vec=True)
+        # 8) Append features to list
+        img_features.append(hog_features)
 
-    # Apply bin_spatial() to get spatial color features
-    spatial_features = bin_spatial(feature_image, size=spatial_size)
-
-    # Apply color_hist() also with a color space option now
-    hist_features = color_hist(feature_image, nbins=hist_bins)
-
-    # Append the new feature vector to the features list
-    return np.concatenate((spatial_features, hist_features))
-
-
-def extract_features(imgs, cspace='BGR', spatial_size=(32, 32), hist_bins=32):
-    """
-    Extracts features using bin_spatial() and color_hist()
-
-    :param imgs:
-    :param cspace:
-    :param spatial_size:
-    :param hist_bins:
-    :return:
-    """
-    # Create a list to append feature vectors to
-    features = []
-
-    # Iterate through the list of images
-    for file in imgs:
-        img = mpimg.imread(file)
-        img = (img*255.).astype(np.uint8)
-        features.append(extract_features_img(img, cspace, spatial_size, hist_bins))
-
-    # Return list of feature vectors
-    return features
+    # 9) Return concatenated array of features
+    return np.concatenate(img_features)
