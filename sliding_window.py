@@ -59,6 +59,7 @@ def draw_boxes(img, bboxes, color=(0, 0, 255), thick=6):
 
     # Iterate through the bounding boxes
     for bbox in bboxes:
+
         # Draw a rectangle given bbox coordinates
         cv2.rectangle(imcopy, bbox[0], bbox[1], color, thick)
 
@@ -249,16 +250,9 @@ def img_process_pipeline(filename, color_space, svc, scaler, orient, hist_bins, 
     # Draw all identified windows on a separate image
     img_all_windows = np.copy(img)
     for i, window in enumerate(all_windows):
-        if i == 0:
-            color = (0, 0, 255)
-        elif i == 1:
-            color = (0, 255, 0)
-        elif i == 2:
-            color = (255, 0, 0)
-        elif i == 3:
-            color = (255, 255, 255)
+        window = [window]
 
-        img_all_windows = draw_boxes(img_all_windows, all_windows[i], color, 4)
+        img_all_windows = draw_boxes(img_all_windows, window, (0, 0, 255), 4)
 
     # Plot and save the output
     if saveFig:
@@ -269,6 +263,7 @@ def img_process_pipeline(filename, color_space, svc, scaler, orient, hist_bins, 
         ax2.imshow(img_all_windows)
         ax2.set_title('All Windows')
         outfilename = 'output_images/sliding_window' + filenum + '.png'
+        print('Saving file %s.' % outfilename)
         plt.savefig(outfilename)
 
     return img_hot_windows, img_all_windows
