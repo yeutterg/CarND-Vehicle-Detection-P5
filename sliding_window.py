@@ -110,12 +110,18 @@ def search_windows(img, windows, clf, scaler, color_space='RGB', spatial_size=(3
     return on_windows
 
 
-# Define a function that takes an image,
-# start and stop positions in both x and y,
-# window size (x and y dimensions),
-# and overlap fraction (for both x and y)
 def slide_window(img, x_start_stop=[None, None], y_start_stop=[None, None],
                  xy_window=(64, 64), xy_overlap=(0.5, 0.5)):
+    """
+    Generates a list of windows to search
+
+    :param img: The image
+    :param x_start_stop: The start and stop positions in the x axis. Can be [None, None] for full span
+    :param y_start_stop: The start and stop positions in the y axis. Can be [None, None] for full span
+    :param xy_window: The size of the window in x and y
+    :param xy_overlap: The overlap between x and y
+    :return: A list containing all windows
+    """
     # If x and/or y start/stop positions not defined, set to image size
     if x_start_stop[0] == None:
         x_start_stop[0] = 0
@@ -187,8 +193,8 @@ def search_image(img, svc, scaler, color_space, spatial_size, hist_bins,
 
         all_windows.extend(windows)
 
-        hot_windows += search_windows(img, windows, svc, scaler, color_space, spatial_size, hist_bins, pix_per_cell,
-                                      cell_per_block, hog_channel)
+        hot_windows += search_windows(img, windows, svc, scaler, color_space, spatial_size, hist_bins,
+                                      orient, pix_per_cell, cell_per_block, hog_channel)
 
     return hot_windows, all_windows
 
