@@ -1,13 +1,11 @@
-import pickle
 import glob
-import cv2
+import pickle
 import time
 
+import cv2
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
-
 import numpy as np
-
 from features import single_img_features
 
 
@@ -197,6 +195,19 @@ def search_image(img, svc, scaler, color_space, spatial_size, hist_bins,
     return hot_windows, all_windows
 
 
+def visualize(fig, rows, cols, imgs, titles):
+    for i, img in enumerate(imgs):
+        plt.subplot(rows, cols, i+1)
+        plt.title(i+1)
+        img_dims = len(img.shape)
+        if img_dims < 3:
+            plt.imshow(img, cmap='hot')
+            plt.title(titles[i])
+        else:
+            plt.imshow(img)
+            plt.title(titles[i])
+
+
 def img_process_pipeline(filename, color_space, svc, scaler, orient, hist_bins, spatial_size,
                          pix_per_cell, cells_per_block, hog_channel, saveFig=False):
     """
@@ -216,7 +227,9 @@ def img_process_pipeline(filename, color_space, svc, scaler, orient, hist_bins, 
     """
     # Load the image
     img = mpimg.imread(filename[0])
-    if filename[0].split('.')[2] == 'jpg':
+    split_filename = filename[0].split('.')
+    filenum = split_filename[1][-1]
+    if split_filename[2] == 'jpg':
         img = img.astype(np.float32) / 255
 
     # Search for hot windows at all scales
@@ -224,7 +237,7 @@ def img_process_pipeline(filename, color_space, svc, scaler, orient, hist_bins, 
     hot_windows, all_windows = search_image(img, svc, scaler, color_space, spatial_size, hist_bins,
                                             orient, pix_per_cell, cells_per_block, hog_channel)
     t1 = time.time()
-    print('Searched all windows in %s seconds' % round(t1 - t0, 3))
+    print('Searched all windows in %s seconds' % (t1 - t0))
 
     # Draw boxes on hot areas
     img_hot_windows = draw_boxes(img, hot_windows, (0, 0, 255), 4)
@@ -251,7 +264,8 @@ def img_process_pipeline(filename, color_space, svc, scaler, orient, hist_bins, 
         ax1.set_title('Hot Windows')
         ax2.imshow(img_all_windows)
         ax2.set_title('All Windows')
-        plt.savefig('output_images/sliding_window.png')
+        outfilename = 'output_images/sliding_window' + filenum + '.png'
+        plt.savefig(outfilename)
 
     return img_hot_windows, img_all_windows
 
