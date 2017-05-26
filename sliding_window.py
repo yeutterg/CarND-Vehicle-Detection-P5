@@ -245,14 +245,13 @@ def img_process_pipeline(filename, color_space, svc, scaler, orient, hist_bins, 
     print('Searched all windows in %s seconds' % (t1 - t0))
 
     # Draw boxes on hot areas
-    img_hot_windows = draw_boxes(img, hot_windows, (0, 0, 255), 4)
+    img_hot_windows = draw_boxes(img, hot_windows, (0, 0, 1), 4)
 
     # Draw all identified windows on a separate image
     img_all_windows = np.copy(img)
     for i, window in enumerate(all_windows):
         window = [window]
-
-        img_all_windows = draw_boxes(img_all_windows, window, (0, 0, 255), 4)
+        img_all_windows = draw_boxes(img_all_windows, window, (0, 0, 1), 4)
 
     # Plot and save the output
     if saveFig:
