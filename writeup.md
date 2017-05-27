@@ -19,6 +19,13 @@ The goals / steps of this project are the following:
 [hist_noncars]: ./output_images/preprocess_hist_noncars.png
 [car_nocar]: ./output_images/preprocess_car_vs_noncar.png
 
+[hot1]: ./output_images/hot1.png
+[hot2]: ./output_images/hot2.png
+[hot3]: ./output_images/hot3.png
+[hot4]: ./output_images/hot4.png
+[hot5]: ./output_images/hot5.png
+[hot6]: ./output_images/hot6.png
+
 [image1]: ./examples/car_not_car.png
 [image2]: ./examples/HOG_example.jpg
 [image3]: ./examples/sliding_windows.jpg
@@ -116,15 +123,31 @@ hog_channel = 'ALL'
 
 #### 1. Describe how (and identify where in your code) you implemented a sliding window search.  How did you decide what scales to search and how much to overlap windows?
 
-I decided to search random window positions at random scales all over the image and came up with this (ok just kidding I didn't actually ;):
+Sliding window search in implemented in the file `sliding_window.py`. After the settings, classifier, and images are loaded, `img_process_pipeline()` is invoked to perform the sliding window search on the image. The function `search_image()` gets "hot" windows where cars are identified. Those windows are then drawn on the original image with `draw_boxes()`. 
 
-![alt text][image3]
+A streamlined version of this pipeline was also built based on the [example video](https://www.youtube.com/watch?v=P2zwrTM8ueA&feature=youtu.be&utm_medium=email&utm_campaign=2017-05-24_carnd_projectwalkthroughs&utm_source=blueshift&utm_content=2017-05-24_carnd_projectwalkthroughs&bsft_eid=809c46b1-7b0f-4960-9cc1-459c102110d5&bsft_clkid=60b7549c-754f-4c13-bb41-a3f40319287e&bsft_uid=dffaba4f-1ae5-4b6f-b338-91e83a90894a&bsft_mid=bd525702-83fa-479a-a6b7-8700d0e789b5), but some performance issues led this to be abandoned. That version is implemented in the function `img_process_pipeline_2()`.
 
 #### 2. Show some examples of test images to demonstrate how your pipeline is working.  What did you do to optimize the performance of your classifier?
 
-Ultimately I searched on two scales using YCrCb 3-channel HOG features plus spatially binned color and histograms of color in the feature vector, which provided a nice result.  Here are some example images:
+I tweaked some parameters, including color space, spatial size, and orientation. The best results were found to be:
 
-![alt text][image4]
+color_space = 'HLS'
+spatial_size = (32, 32)
+hist_bins = 32
+orient = 9
+pix_per_cell = 8
+cell_per_block = 2
+hog_channel = 'ALL'
+
+Although some false positives and negatives are present, overall, it seems to identify cars most of the time. Some examples are displayed below:
+
+![hot1][hot1]
+![hot2][hot2]
+![hot3][hot3]
+![hot4][hot4]
+![hot5][hot5]
+![hot6][hot6]
+
 ---
 
 ### Video Implementation
