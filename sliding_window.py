@@ -6,7 +6,7 @@ import cv2
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import numpy as np
-from features import single_img_features
+from features import single_img_features, get_hog_features, bin_spatial, color_hist
 
 
 def load_hog_pickle(filename='hog.p'):
@@ -200,8 +200,38 @@ def search_image(img, svc, scaler, color_space, spatial_size, hist_bins,
     return hot_windows, all_windows
 
 
+def convert_color(img, conv='RGB2YCrCb'):
+    """
+    Converts an image between color profiles
+
+    :param img: The image
+    :param conv: The conversion to make
+    :return: The converted image
+    """
+    if conv == 'RGB2YCrCb':
+        return cv2.cvtColor(img, cv2.COLOR_RGB2YCrCb)
+    elif conv == 'BGR2YCrCb':
+        return cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
+    elif conv == 'RGB2LUV':
+        return cv2.cvtColor(img, cv2.COLOR_RGB2LUV)
+
+
+def visualize(fig, rows, cols, imgs, titles):
+    for i, img in enumerate(imgs):
+        plt.subplot(rows, cols, i+1)
+        plt.title(i+1)
+        img_dims = len(img.shape)
+        if img_dims < 3:
+            plt.imshow(img, cmap='hot')
+            plt.title(titles[i])
+        else:
+            plt.imshow(img)
+            plt.title(titles[i])
+
+
 def img_process_pipeline(filename, color_space, svc, scaler, orient, hist_bins, spatial_size,
-                         pix_per_cell, cells_per_block, hog_channel, saveFig=False):
+                         pix_per_cell, cells_per_block, hog_channel, saveFig0=False,
+                         saveFig1=False):
     """
 
     :param filename:
@@ -214,7 +244,8 @@ def img_process_pipeline(filename, color_space, svc, scaler, orient, hist_bins, 
     :param pix_per_cell:
     :param cells_per_block:
     :param hog_channel:
-    :param saveFig:
+    :param saveFig0:
+    :param saveFig1:
     :return:
     """
     # Load the image
@@ -235,7 +266,7 @@ def img_process_pipeline(filename, color_space, svc, scaler, orient, hist_bins, 
     img_hot_windows = draw_boxes(img, hot_windows, (0, 0, 1), 4)
 
     # Plot and save the output
-    if saveFig:
+    if saveFig0:
         # Draw all identified windows on a separate image
         img_all_windows = np.copy(img)
         for i, window in enumerate(all_windows):
@@ -252,7 +283,123 @@ def img_process_pipeline(filename, color_space, svc, scaler, orient, hist_bins, 
         print('Saving file %s.' % outfilename)
         plt.savefig(outfilename)
 
-    return img_hot_windows, img_all_windows
+    if saveFig1:
+        plt.figure()
+        plt.imshow(img_hot_windows)
+        outfilename = 'output_images/hot' + filenum + '.png'
+        print('Saving file %s.' % outfilename)
+        plt.savefig(outfilename)
+
+    return img_hot_windows
+
+
+def img_process_pipeline_2(images, orient, pix_per_cell, cell_per_block, spatial_size,
+                           hist_bins, scaler, svc, saveFig=False):
+    """
+    Simplified / faster image processing pipeline
+
+    :param images:
+    :return:
+    """
+    out_images = []
+    out_maps = []
+    out_titles = []
+    out_boxes = []
+
+    ystart = 400
+    ystop = 656
+    scale = 1
+
+    # Iterate over test images
+    for img_src in images:
+        img_boxes = []
+        t = time.time()
+        count = 0
+
+        # Read in the image
+        img = mpimg.imread(img_src)
+        draw_img = np.copy(img)
+
+        # Make a heatmap of zeros
+        heatmap = np.zeros_like(img[:, :, 0])
+        img = img.astype(np.float32) / 255
+
+        img_tosearch = img[ystart:ystop, :, :]
+        ctrans_tosearch = convert_color(img_tosearch, conv='RGB2YCrCb')
+        if scale != 1:
+            imshape = ctrans_tosearch.shape
+            ctrans_tosearch = cv2.resize(ctrans_tosearch, (np.int(imshape[1]/scale, np.int(imshape[0]/scale))))
+
+        ch1 = ctrans_tosearch[:, :, 0]
+        ch2 = ctrans_tosearch[:, :, 1]
+        ch3 = ctrans_tosearch[:, :, 2]
+
+        # Define blocks and steps
+        nxblocks = (ch1.shape[1] // pix_per_cell) - 1
+        nyblocks = (ch1.shape[0] // pix_per_cell) - 1
+        nfeat_per_block = orient * cell_per_block**2
+        window = 64
+        nblocks_per_window = (window // pix_per_cell) - 1
+        cells_per_step = 2
+        nxsteps = (nxblocks - nblocks_per_window) // cells_per_step
+        nysteps = (nyblocks - nblocks_per_window) // cells_per_step
+
+        # Compute individual channel HOG features for the entire image
+        hog1 = get_hog_features(ch1, orient, pix_per_cell, cell_per_block, feature_vec=False)
+        hog2 = get_hog_features(ch2, orient, pix_per_cell, cell_per_block, feature_vec=False)
+        hog3 = get_hog_features(ch3, orient, pix_per_cell, cell_per_block, feature_vec=False)
+
+        for xb in range(nxsteps):
+            for yb in range(nysteps):
+                count += 1
+                xpos = xb * cells_per_step
+                ypos = yb * cells_per_step
+
+                # Extract HOG for this patch
+                hog_feat1 = hog1[ypos:ypos+nblocks_per_window, xpos:xpos+nblocks_per_window].ravel()
+                hog_feat2 = hog2[ypos:ypos + nblocks_per_window, xpos:xpos + nblocks_per_window].ravel()
+                hog_feat3 = hog3[ypos:ypos + nblocks_per_window, xpos:xpos + nblocks_per_window].ravel()
+                hog_features = np.hstack((hog_feat1, hog_feat2, hog_feat3))
+
+                xleft = xpos * pix_per_cell
+                ytop = ypos * pix_per_cell
+
+                # Extract the image patch
+                subimg = cv2.resize(ctrans_tosearch[ytop:ytop+window, xleft:xleft+window], (64, 64))
+
+                # Get color features
+                spatial_features = bin_spatial(subimg, size=spatial_size)
+                hist_features = color_hist(subimg, nbins=hist_bins)
+
+                # Scale features and make a prediction
+                test_features = scaler.transform(np.hstack((spatial_features, hist_features, hog_features)).reshape(1, -1))
+                test_pred = svc.predict(test_features)
+
+                if test_pred == 1:
+                    xbox_left = np.int(xleft * scale)
+                    ytop_draw = np.int(ytop * scale)
+                    win_draw = np.int(window * scale)
+
+                    # Draw a box
+                    cv2.rectangle(draw_img, (xbox_left, ytop_draw+ystart), (xbox_left+win_draw, ytop_draw+win_draw+ystart), (0, 0, 255))
+                    img_boxes.append(((xbox_left, ytop_draw+ystart), (xbox_left+win_draw, ytop_draw+win_draw+ystart)))
+
+                    # Draw a heatmap
+                    heatmap[ytop_draw+ystart:ytop_draw+win_draw+ystart, xbox_left:xbox_left+win_draw] += 1
+
+        print(time.time()-t, 'seconds to run, total windows =', count)
+
+        out_images.append(draw_img)
+
+        out_titles.append(img_src[-9:])
+        out_titles.append(img_src[-9:])
+        out_images.append(heatmap)
+        out_maps.append(heatmap)
+        out_boxes.append(img_boxes)
+
+    fig = plt.figure(figsize=(12, 24))
+    visualize(fig, 8, 2, out_images, out_titles)
+    plt.savefig('output_images/streamlined.png')
 
 
 def sliding_window_search():
@@ -264,17 +411,33 @@ def sliding_window_search():
     images = load_test_images()
 
     # Test: run the pipeline on a single image
-    # img_hot_windows, img_all_windows = img_process_pipeline(images[2:3], color_space, svc,
+    # img_hot_windows = img_process_pipeline(images[2:3], color_space, svc,
     #                                                         scaler, orient, hist_bins, spatial_size,
     #                                                         pix_per_cell, cells_per_block, hog_channel,
-    #                                                         saveFig=True)
+    #                                                         saveFig0=True)
 
     # Test: run the pipeline on all test images
     for img in images:
-        img_hot_windows, img_all_windows = img_process_pipeline([img], color_space, svc,
+        img_hot_windows = img_process_pipeline([img], color_space, svc,
                                                                 scaler, orient, hist_bins, spatial_size,
                                                                 pix_per_cell, cells_per_block, hog_channel,
-                                                                saveFig=True)
+                                                                saveFig1=True)
 
 
-sliding_window_search()
+def streamlined_search():
+    # Load the HOG parameters
+    color_space, svc, stack, scaler, orient, hist_bins, spatial_size, pix_per_cell, \
+    cells_per_block, hog_channel = load_hog_pickle()
+
+    # Load test images
+    images = load_test_images()
+
+    # Run the streamlined pipeline
+    img_process_pipeline_2(images, orient, pix_per_cell, cells_per_block, spatial_size,
+                           hist_bins, scaler, svc, saveFig=True)
+
+
+# sliding_window_search()
+streamlined_search()
+
+
