@@ -308,7 +308,7 @@ def img_process_pipeline_2(images, orient, pix_per_cell, cell_per_block, spatial
 
     ystart = 400
     ystop = 656
-    scale = 1
+    scale = 1.5
 
     # Iterate over test images
     for img_src in images:
@@ -328,7 +328,7 @@ def img_process_pipeline_2(images, orient, pix_per_cell, cell_per_block, spatial
         ctrans_tosearch = convert_color(img_tosearch, conv='RGB2YCrCb')
         if scale != 1:
             imshape = ctrans_tosearch.shape
-            ctrans_tosearch = cv2.resize(ctrans_tosearch, (np.int(imshape[1]/scale, np.int(imshape[0]/scale))))
+            ctrans_tosearch = cv2.resize(ctrans_tosearch, (np.int(imshape[1]/scale), np.int(imshape[0]/scale)))
 
         ch1 = ctrans_tosearch[:, :, 0]
         ch2 = ctrans_tosearch[:, :, 1]
