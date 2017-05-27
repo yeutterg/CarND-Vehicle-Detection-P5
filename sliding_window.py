@@ -200,19 +200,6 @@ def search_image(img, svc, scaler, color_space, spatial_size, hist_bins,
     return hot_windows, all_windows
 
 
-def visualize(fig, rows, cols, imgs, titles):
-    for i, img in enumerate(imgs):
-        plt.subplot(rows, cols, i+1)
-        plt.title(i+1)
-        img_dims = len(img.shape)
-        if img_dims < 3:
-            plt.imshow(img, cmap='hot')
-            plt.title(titles[i])
-        else:
-            plt.imshow(img)
-            plt.title(titles[i])
-
-
 def img_process_pipeline(filename, color_space, svc, scaler, orient, hist_bins, spatial_size,
                          pix_per_cell, cells_per_block, hog_channel, saveFig=False):
     """
@@ -247,14 +234,14 @@ def img_process_pipeline(filename, color_space, svc, scaler, orient, hist_bins, 
     # Draw boxes on hot areas
     img_hot_windows = draw_boxes(img, hot_windows, (0, 0, 1), 4)
 
-    # Draw all identified windows on a separate image
-    img_all_windows = np.copy(img)
-    for i, window in enumerate(all_windows):
-        window = [window]
-        img_all_windows = draw_boxes(img_all_windows, window, (0, 0, 1), 4)
-
     # Plot and save the output
     if saveFig:
+        # Draw all identified windows on a separate image
+        img_all_windows = np.copy(img)
+        for i, window in enumerate(all_windows):
+            window = [window]
+            img_all_windows = draw_boxes(img_all_windows, window, (0, 0, 1), 4)
+
         plt.figure()
         f, (ax1, ax2) = plt.subplots(1, 2, figsize=(24, 9))
         ax1.imshow(img_hot_windows)
@@ -277,10 +264,17 @@ def sliding_window_search():
     images = load_test_images()
 
     # Test: run the pipeline on a single image
-    img_hot_windows, img_all_windows = img_process_pipeline(images[2:3], color_space, svc,
-                                                            scaler, orient, hist_bins, spatial_size,
-                                                            pix_per_cell, cells_per_block, hog_channel,
-                                                            saveFig=True)
+    # img_hot_windows, img_all_windows = img_process_pipeline(images[2:3], color_space, svc,
+    #                                                         scaler, orient, hist_bins, spatial_size,
+    #                                                         pix_per_cell, cells_per_block, hog_channel,
+    #                                                         saveFig=True)
+
+    # Test: run the pipeline on all test images
+    for img in images:
+        img_hot_windows, img_all_windows = img_process_pipeline([img], color_space, svc,
+                                                                scaler, orient, hist_bins, spatial_size,
+                                                                pix_per_cell, cells_per_block, hog_channel,
+                                                                saveFig=True)
 
 
 sliding_window_search()
