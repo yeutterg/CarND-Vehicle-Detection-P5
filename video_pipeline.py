@@ -90,7 +90,7 @@ def multi_img_process_pipeline(images, svc, scaler, color_space, spatial_size, h
         # Get the heatmap
         heatmap = np.zeros_like(img[:, :, 0]).astype(np.float)
         heatmap = add_heat(heatmap, boxes.allboxes)
-        heatmap = apply_threshold(heatmap, 0)
+        heatmap = apply_threshold(heatmap, 1)
 
         # Identify how many cars found
         labels = label(heatmap)
@@ -113,7 +113,7 @@ def multi_img_process_pipeline(images, svc, scaler, color_space, spatial_size, h
         if saveFig:
             # Plot
             plt.figure()
-            f, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4)
+            f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='col', sharey='row')
             f.tight_layout()
             ax1.imshow(window_img)
             ax1.set_title('Identified Windows')
@@ -132,7 +132,7 @@ def video_search():
     color_space, svc, stack, scaler, orient, hist_bins, spatial_size, pix_per_cell, \
     cell_per_block, hog_channel = load_hog_pickle()
 
-    # Load sample images from the video
+    # # Load sample images from the video
     # images = glob.glob('./video_img/*.png')
     #
     # # Run pipeline on test images
@@ -177,10 +177,10 @@ def video_search():
 
         return draw_img
 
-    # Load sample images from the video
+    # # Load sample images from the video
     # images = glob.glob('./video_img/*.png')
     #
-    # Run pipeline on test images
+    # # Run pipeline on test images
     # for i, img in enumerate(images[5:15]):
     #     img = mpimg.imread(img)
     #     draw_img = process_image(img, video=False)
