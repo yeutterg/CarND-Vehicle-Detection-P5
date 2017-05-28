@@ -356,7 +356,7 @@ def img_process_pipeline_2(images, orient, pix_per_cell, cell_per_block, spatial
                 ypos = yb * cells_per_step
 
                 # Extract HOG for this patch
-                hog_feat1 = hog1[ypos:ypos+nblocks_per_window, xpos:xpos+nblocks_per_window].ravel()
+                hog_feat1 = hog1[ypos:ypos + nblocks_per_window, xpos:xpos + nblocks_per_window].ravel()
                 hog_feat2 = hog2[ypos:ypos + nblocks_per_window, xpos:xpos + nblocks_per_window].ravel()
                 hog_feat3 = hog3[ypos:ypos + nblocks_per_window, xpos:xpos + nblocks_per_window].ravel()
                 hog_features = np.hstack((hog_feat1, hog_feat2, hog_feat3))
@@ -419,9 +419,9 @@ def sliding_window_search():
     # Test: run the pipeline on all test images
     for img in images:
         img_hot_windows = img_process_pipeline([img], color_space, svc,
-                                                                scaler, orient, hist_bins, spatial_size,
-                                                                pix_per_cell, cells_per_block, hog_channel,
-                                                                saveFig1=True)
+                                                scaler, orient, hist_bins, spatial_size,
+                                                pix_per_cell, cells_per_block, hog_channel,
+                                                saveFig1=True)
 
 
 def streamlined_search():
@@ -438,6 +438,6 @@ def streamlined_search():
 
 
 # sliding_window_search()
-streamlined_search()
+# streamlined_search()
 
 

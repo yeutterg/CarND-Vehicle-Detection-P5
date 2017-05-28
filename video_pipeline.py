@@ -6,6 +6,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.ndimage.measurements import label
 import cv2
+from moviepy.editor import VideoFileClip
+import glob
 
 
 class BoundingBoxes:
@@ -51,7 +53,7 @@ def add_heat(heatmap, bbox_list):
             # Add heat (+1) for all pixels inside each box
             heatmap[box[0][1]:box[1][1], box[0][0]:box[1][0]] += 1
 
-        return heatmap
+    return heatmap
 
 
 def apply_threshold(heatmap, threshold):
@@ -61,13 +63,15 @@ def apply_threshold(heatmap, threshold):
 
 
 def multi_img_process_pipeline(images, svc, scaler, color_space, spatial_size, hist_bins,
-                               orient, pix_per_cell, cell_per_block, hog_channel, saveFig=False):
-    boxes = BoundingBoxes(n=3)
+                               orient, pix_per_cell, cell_per_block, hog_channel, saveFig=False,
+                               filetype='jpg'):
+    boxes = BoundingBoxes(n=1)
 
     for i, file in enumerate(images):
         # Open the image
         img = mpimg.imread(file)
-        img = img.astype(np.float32) / 255
+        if filetype == 'jpg':
+            img = img.astype(np.float32) / 255
 
         draw_image = np.copy(img)
 
@@ -86,7 +90,7 @@ def multi_img_process_pipeline(images, svc, scaler, color_space, spatial_size, h
         # Get the heatmap
         heatmap = np.zeros_like(img[:, :, 0]).astype(np.float)
         heatmap = add_heat(heatmap, boxes.allboxes)
-        heatmap = apply_threshold(heatmap, 8)
+        heatmap = apply_threshold(heatmap, 0)
 
         # Identify how many cars found
         labels = label(heatmap)
@@ -128,11 +132,68 @@ def video_search():
     color_space, svc, stack, scaler, orient, hist_bins, spatial_size, pix_per_cell, \
     cell_per_block, hog_channel = load_hog_pickle()
 
-    # Load test images
-    images = load_test_images()
+    # Load sample images from the video
+    # images = glob.glob('./video_img/*.png')
+    #
+    # # Run pipeline on test images
+    # out_img = multi_img_process_pipeline(images[5:15], svc, scaler, color_space, spatial_size, hist_bins,
+    #                                      orient, pix_per_cell, cell_per_block, hog_channel, saveFig=True,
+    #                                      filetype='png')
 
-    multi_img_process_pipeline(images, svc, scaler, color_space, spatial_size, hist_bins,
-                               orient, pix_per_cell, cell_per_block, hog_channel, saveFig=True)
+    boxes = BoundingBoxes(n=3)
+
+    def process_image(img, video=True):
+        draw_img = np.copy(img)
+
+        if video:
+            img = img.astype(np.float32) / 255
+
+        # Get hot windows
+        hot_windows, _ = search_image(img, svc, scaler, color_space, spatial_size, hist_bins,
+                                      orient, pix_per_cell, cell_per_block, hog_channel)
+
+        boxes.update(hot_windows)
+
+        # Get the heatmap
+        heatmap = np.zeros_like(img[:, :, 0]).astype(np.float)
+        heatmap = add_heat(heatmap, boxes.allboxes)
+        heatmap = apply_threshold(heatmap, 3)
+
+        # Identify how many cars found
+        labels = label(heatmap)
+
+        # Draw labeled boxes
+        for car in range(1, labels[1] + 1):
+            # Get pixels that contain cars
+            nonzero = (labels[0] == car).nonzero()
+
+            # Get the x and y values
+            nonzerox = np.array(nonzero[1])
+            nonzeroy = np.array(nonzero[0])
+
+            # Draw a bounding box
+            bbox = ((np.min(nonzerox), np.min(nonzeroy)), (np.max(nonzerox), np.max(nonzeroy)))
+            cv2.rectangle(draw_img, bbox[0], bbox[1], (0, 0, 1), 6)
+
+        return draw_img
+
+    # Load sample images from the video
+    # images = glob.glob('./video_img/*.png')
+    #
+    # Run pipeline on test images
+    # for i, img in enumerate(images[5:15]):
+    #     img = mpimg.imread(img)
+    #     draw_img = process_image(img, video=False)
+    #     plt.figure()
+    #     plt.imshow(draw_img)
+    #     plt.savefig('./output_images/out' + str(i))
+
+    # Load video and process
+    videofile = 'project_video.mp4'
+    outfile = './output_images/out_' + videofile
+    videoclip = VideoFileClip(videofile)
+    outclip = videoclip.fl_image(process_image)
+    outclip.write_videofile(outfile, audio=False)
 
 
 video_search()
