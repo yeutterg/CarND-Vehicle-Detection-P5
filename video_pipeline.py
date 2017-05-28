@@ -140,7 +140,7 @@ def video_search():
     #                                      orient, pix_per_cell, cell_per_block, hog_channel, saveFig=True,
     #                                      filetype='png')
 
-    boxes = BoundingBoxes(n=3)
+    boxes = BoundingBoxes(n=10)
 
     def process_image(img, video=True):
         draw_img = np.copy(img)
