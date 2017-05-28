@@ -1,9 +1,7 @@
-##Writeup Template
-###You can use this file as a template for your writeup if you want to submit it as a markdown file, but feel free to use some other method and submit a pdf if you prefer.
-
----
-
 **Vehicle Detection Project**
+
+### By Greg Yeutter
+### 2017-05-28
 
 The goals / steps of this project are the following:
 
@@ -18,6 +16,7 @@ The goals / steps of this project are the following:
 [hist_cars]: ./output_images/preprocess_hist_cars.png
 [hist_noncars]: ./output_images/preprocess_hist_noncars.png
 [car_nocar]: ./output_images/preprocess_car_vs_noncar.png
+[hog_feat]: ./output_images/hog_features.png
 
 [hot1]: ./output_images/hot1.png
 [hot2]: ./output_images/hot2.png
@@ -26,14 +25,16 @@ The goals / steps of this project are the following:
 [hot5]: ./output_images/hot5.png
 [hot6]: ./output_images/hot6.png
 
-[image1]: ./examples/car_not_car.png
-[image2]: ./examples/HOG_example.jpg
-[image3]: ./examples/sliding_windows.jpg
-[image4]: ./examples/sliding_window.jpg
-[image5]: ./examples/bboxes_and_heat.png
-[image6]: ./examples/labels_map.png
-[image7]: ./examples/output_bboxes.png
-[video1]: ./project_video.mp4
+[heat0]: ./output_images/heat0.png
+[heat1]: ./output_images/heat1.png
+[heat2]: ./output_images/heat2.png
+[heat3]: ./output_images/heat3.png
+[heat4]: ./output_images/heat4.png
+[heat5]: ./output_images/heat5.png
+[heat6]: ./output_images/heat6.png
+[heat7]: ./output_images/heat7.png
+[heat8]: ./output_images/heat8.png
+[heat9]: ./output_images/heat9.png
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/513/view) Points
 ### Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
@@ -90,6 +91,10 @@ hog_channel = 'ALL'
 ```
 
 I then processed the data into X_train, X_valid, X_test, y_train, y_valid, and y_test. This was performed in `generate_train_valid_test()`.
+
+The image below shows training set car and noncar images, followed by their HLS channels and HOG for each HLS channel. This confirms that the L and S channels both appear useful for HOG classification.
+
+![hog_feat][hog_feat]
 
 
 #### 2. Explain how you settled on your final choice of HOG parameters.
@@ -153,26 +158,30 @@ Although some false positives and negatives are present, overall, it seems to id
 ### Video Implementation
 
 #### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (somewhat wobbly or unstable bounding boxes are ok as long as you are identifying the vehicles most of the time with minimal false positives.)
-Here's a [link to my video result](./project_video.mp4)
+
+Here's my video result [in mp4 format](./output_images/out_project_video.mp4) and [on YouTube](https://youtu.be/qZwQKitp1zc). While there are a few false positives and the occassional identification of cars in the opposing lane, the nearest cars are always identified.
 
 
 #### 2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes.
 
-I recorded the positions of positive detections in each frame of the video.  From the positive detections I created a heatmap and then thresholded that map to identify vehicle positions.  I then used `scipy.ndimage.measurements.label()` to identify individual blobs in the heatmap.  I then assumed each blob corresponded to a vehicle.  I constructed bounding boxes to cover the area of each blob detected.  
+Most of the functionality after sliding window search was implemented in `video_pipeline.py`. A prototype of the heatmap to vehicle detection pipeline is found in `multi_img_process_pipeline()` and then later refined in `process_image()` within `video_search()`. The class `BoundingBoxes` is used to store frame history for a smoother output. 
 
-Here's an example result showing the heatmap from a series of frames of video, the result of `scipy.ndimage.measurements.label()` and the bounding boxes then overlaid on the last frame of video:
+For each image, "hot" windows are identified using the `search_image()` function. These boxes are then turned into a heatmap using `add_heat()`, and some low heatmap values are removed using `apply_threshold()`. 
 
-### Here are six frames and their corresponding heatmaps:
+Using `scipy.ndimage.measurements.label`, the number of cars predicted in the image can be extracted from the heatmap. Using this function, new bounding boxes are drawn at the predicted car locations. This drawing is then saved to the output video.
 
-![alt text][image5]
+### Here are 10 frames, with their corresponding heatmaps, predicted labels, and drawn bounding boxes:
 
-### Here is the output of `scipy.ndimage.measurements.label()` on the integrated heatmap from all six frames:
-![alt text][image6]
-
-### Here the resulting bounding boxes are drawn onto the last frame in the series:
-![alt text][image7]
-
-
+![heat0][heat0]
+![heat1][heat1]
+![heat2][heat2]
+![heat3][heat3]
+![heat4][heat4]
+![heat5][heat5]
+![heat6][heat6]
+![heat7][heat7]
+![heat8][heat8]
+![heat9][heat9]
 
 ---
 
@@ -180,5 +189,21 @@ Here's an example result showing the heatmap from a series of frames of video, t
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+To recap, the general approach of this project was as follows:
+* Perform HOG on a labeled dataset of cars and noncars
+* Train a Linear SVM classifier with the binned color, spatial, and HOG features
+* Separate the dataset into training, testing, and validation sets
 
+Then, for each frame of the video:
+* Search for windows of possible cars with a sliding window technique
+* Generate a heatmap that favros overlapping windows (multiple detections = more likely a car)
+* From the heatmap, extract the highest-weighted windows as cars (label)
+* Draw a bounding box in the labeled position on the original frame
+
+With a lot of parameter tweaking along the way, I was able to identify true positives most of the time and eliminate most of the false positives. 
+
+In the [video](https://youtu.be/qZwQKitp1zc), I noticed detections of cars on the opposing lane of traffic, which may be desirable. However, I also noticed more false positives on the concrete sections of the road than the asphalt sections.
+
+A similar issue was noticed in the [advanced lane line detection project](https://github.com/yeutterg/CarND-Advanced-Lane-Lines-P4), where results tended to be more unstable on the lighter sections of the road. This was partially mitigated with history tracking and re-searching the frame in that project, as well as parameter tuning. 
+
+Since this project re-searches every frame but keeps a history, the vehicle tracking was maintained. However, false positives could probably be reduced in these sections with a larger training set and better processing of images into HOG features (such as adjusting saturation).
