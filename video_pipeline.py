@@ -157,7 +157,7 @@ def video_search():
         # Get the heatmap
         heatmap = np.zeros_like(img[:, :, 0]).astype(np.float)
         heatmap = add_heat(heatmap, boxes.allboxes)
-        heatmap = apply_threshold(heatmap, 4)
+        heatmap = apply_threshold(heatmap, 7)
 
         # Identify how many cars found
         labels = label(heatmap)
